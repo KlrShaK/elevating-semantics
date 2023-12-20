@@ -81,6 +81,7 @@ class ET(nn.Module):
         # final touch
         self.init_weights()
 
+    # AUTHOR CHANGE GAT - Graph Aware Transformer - vision 
     #Todo Read and understand
     def forward(self, **inputs):
         """
