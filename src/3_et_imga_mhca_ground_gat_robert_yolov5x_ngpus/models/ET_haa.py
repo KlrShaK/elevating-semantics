@@ -4,7 +4,7 @@ from torch import nn
 
 import numpy as np
 
-
+# AUTHOR CHANGE - Multi-head Cross Attention Mechanism ( MHCA )
 class CrossAttentionBlock(nn.Module):
     def __init__(self, q_dim: int, kv_dim: int, n_head: int):
         super().__init__()
@@ -94,7 +94,7 @@ class ET(nn.Module):
         # [ [bs,768] [bs,768],... ]
         direct_features = inputs["directions"]
         # [[bs,2], [bs,2],...]
-        xy_pos = inputs["pos"]
+        xy_pos = inputs["pos"] # This input is extra
 
         emb_frames = torch.stack(im_features, dim=1)
         emb_directions = torch.stack(direct_features, dim=1)
@@ -157,6 +157,8 @@ class ET(nn.Module):
         embeddings = emb_directions
         return embeddings
 
+
+    # AUTHOR CHANGE - GAT - Graph-Aware Transformer
     @staticmethod
     def compute_pair_dist(xy_pos, length):
         """

@@ -570,6 +570,7 @@ class NavCMTAgent:
                     input['lenths'][i] += 1
 
             # forward the model;
+                    
             output, pred_saliency, bbox_logits = self.vln_model(
                 directions=input['directions'],
                 pos=input['pos'],
