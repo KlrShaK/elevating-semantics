@@ -1,6 +1,6 @@
 import torch
 from models.common import *
-
+from torchsummary import summary
 
 class yolov5x_backbone(torch.nn.Module):
     def __init__(self):
@@ -35,8 +35,8 @@ if __name__ == '__main__':
     inp = torch.rand([4, 3, 224, 224])
     backbone = yolov5x_backbone()
 
-    model = torch.load('last.pt')
-    new_state = model['model'].model.state_dict()
+    new_state = torch.load(r'models/yolov5x_backbone.pth')
+    # new_state = model['model'].model.state_dict()
     filter_state_dict = {}
     for k, v in new_state.items():
         if int(k.split('.')[0]) <= 9:
@@ -45,5 +45,5 @@ if __name__ == '__main__':
 
     msg = backbone.load_state_dict(new_state, strict=False)
     print(msg)
-
+    print(backbone) # Print Model Architecture 
     out = backbone(inp)

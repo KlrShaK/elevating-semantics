@@ -73,7 +73,7 @@ def compute_iou(a, b):
 def is_default_gpu(opts) -> bool:
     return opts.local_rank == -1 or dist.get_rank() == 0
 
-
+# AUTHOR CHANGE - Angle Projector
 def get_direction(start, end):
     vec = np.array(end) - np.array(start)
     _angle = 0
@@ -570,6 +570,7 @@ class NavCMTAgent:
                     input['lenths'][i] += 1
 
             # forward the model;
+                    
             output, pred_saliency, bbox_logits = self.vln_model(
                 directions=input['directions'],
                 pos=input['pos'],
