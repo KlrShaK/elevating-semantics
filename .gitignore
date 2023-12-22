@@ -1,2 +1,3 @@
 /datasets
-/src/*/models/yolov5x_backbone.pth
+datasets/yolov5x_backbone.pth
+src/*/models/yolov5x_backbone.pth
