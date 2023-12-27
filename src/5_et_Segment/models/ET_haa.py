@@ -4,7 +4,6 @@ from torch import nn
 
 import numpy as np
 
-# TEST CHANGES
 # AUTHOR CHANGE - Multi-head Cross Attention Mechanism ( MHCA )
 class CrossAttentionBlock(nn.Module):
     def __init__(self, q_dim: int, kv_dim: int, n_head: int):
@@ -79,6 +78,17 @@ class ET(nn.Module):
 
         self.sprel_linear = nn.Linear(1, 1)
 
+        # Segmentation Prediction
+        self.seg_pred = nn.Sequential(
+            nn.Conv2d(768, 256, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Conv2d(128, 5, kernel_size=1),  )# Assuming 5 Classes in segmentation
+
+
         # final touch
         self.init_weights()
 
@@ -129,7 +139,11 @@ class ET(nn.Module):
         # bbox predicton;
         bbox_logits = self.bbox_pred(decoder_input)
 
-        return output, pred_saliency, bbox_logits
+        # Assuming 'decoder_input' is the feature tensor of shape [batch_size, feature_dim, H, W]
+        seg_logits = self.seg_pred(decoder_input)
+
+
+        return output, pred_saliency, bbox_logits, seg_logits
 
     def embed_frames(self, frames_pad, lang_cls, t):
         """

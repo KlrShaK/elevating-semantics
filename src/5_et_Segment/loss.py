@@ -557,3 +557,35 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     enclose_area = torch.max(enclose_area, eps)
     gious = ious - (enclose_area - union) / enclose_area
     return gious
+
+
+# Segmentation Loss ***********STILL TO LOOK INTO NOT CORRECT PROBs*********************
+
+class DiceLoss(nn.Module):
+    def forward(self, inputs, targets, smooth=1e-6):
+        # Apply softmax to the inputs
+        inputs = torch.softmax(inputs, dim=1)
+
+        # Create the one-hot encoding for targets
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=inputs.shape[1])
+        targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()
+
+        # Calculate Dice coefficient for each class
+        intersection = torch.sum(inputs * targets_one_hot, dim=(2, 3))
+        union = torch.sum(inputs, dim=(2, 3)) + torch.sum(targets_one_hot, dim=(2, 3))
+
+        dice_score = (2. * intersection + smooth) / (union + smooth)
+        dice_loss = 1 - dice_score.mean()
+
+        return dice_loss
+
+class CombinedSegLoss(nn.Module):
+    def __init__(self):
+        super(CombinedSegLoss, self).__init__()
+        self.ce_loss = CrossEntropyLoss()
+        self.dice_loss = DiceLoss()
+
+    def forward(self, inputs, targets):
+        ce = self.ce_loss(inputs, targets)
+        dice = self.dice_loss(inputs, targets)
+        return ce + dice
