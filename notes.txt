@@ -1,0 +1,13 @@
+    main()
+  File "main.py", line 263, in main
+    train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, rank=rank)
+  File "main.py", line 157, in train
+    agent.train(loader, args.log_every, feedback=args.feedback, nss_w_weighting=1)  # nss_w_weighting = max(0, (args.iters/2 - idx)/ (args.iters/2)))
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/0_et_imga/agent.py", line 199, in train
+    self.rollout(train_ml=self.args.ml_weight, train_rl=False, nss_w=0, **kwargs)  # self.args.nss_w*nss_w_weighting, **kwargs)
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/0_et_imga/agent.py", line 561, in rollout
+    target, gt_progress = self.teacher_action(obs, ended, current_view_corners, current_directions)  # Retrun gt action for every batch that have not reached the end
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/0_et_imga/agent.py", line 367, in teacher_action
+    for line_string in shapely_poly.intersection(shapely_line):
+TypeError: 'MultiLineString' object is not iterable
+

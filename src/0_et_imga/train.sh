@@ -30,10 +30,11 @@ flag="--root_dir ../../datasets
       "
 
 # train
-CUDA_VISIBLE_DEVICES='2' python main.py --output_dir ./logs/ $flag
+CUDA_VISIBLE_DEVICES='0' python3 main.py --output_dir ./logs/ $flag
 
-# eval
-CUDA_VISIBLE_DEVICES='7' python main.py --output_dir ./logs/ $flag \
-  --resume_file ./logs/ckpts/best_val_unseen \
-  --inference True \
-  --submit True
+
+# # eval
+# CUDA_VISIBLE_DEVICES='0,1' python3 main.py --output_dir ./logs/ $flag \
+#   --resume_file ./logs/ckpts/best_val_unseen \
+#   --inference True \
+#   --submit True
