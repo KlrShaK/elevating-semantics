@@ -1,3 +1,5 @@
+# GENUINELY CURIOUS_--------------------------------------------------------------------
+
     main()
   File "main.py", line 263, in main
     train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, rank=rank)
@@ -10,4 +12,65 @@
   File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/0_et_imga/agent.py", line 367, in teacher_action
     for line_string in shapely_poly.intersection(shapely_line):
 TypeError: 'MultiLineString' object is not iterable
+
+
+
+LAST ERROR---------------------------------------------
+(avdn2) mlr_lab@MlrLab-Precision-7920-Tower:/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/4_et_newBackbones$ bash train.sh 
+/home/mlr_lab/anaconda3/envs/avdn2/lib/python3.8/site-packages/torch/distributed/launch.py:178: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use_env is set by default in torchrun.
+If your script expects `--local_rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  warnings.warn(
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+Init distributed 0 - 2
+Init distributed 1 - 2
+ANDHNavBatchMap loaded with 4591 instructions, using splits: train
+ANDHNavBatchMap loaded with 4591 instructions, using splits: train
+ANDHNavBatchMap loaded with 370 instructions, using splits: val_seen
+ANDHNavBatchMap loaded with 370 instructions, using splits: val_seen
+ANDHNavBatchMap loaded with 411 instructions, using splits: val_unseen
+ANDHNavBatchMap loaded with 411 instructions, using splits: val_unseen
+Namespace(act_pred_token='ob_txt', angle_feat_size=4, batch_size=4, ckpt_dir='./logs/ckpts', darknet_model_file='./datasets/AVDN/pretrain_weights/yolo_v3.cfg', darknet_weight_file='./AVDN/pretrain_weights/best.pt', demb=768, dist_url='env://', dropout=0.5, dropout_emb=0, dropout_transformer_encoder=0.1, encoder_heads=12, encoder_layers=2, entropy_loss_weight=0.01, epsilon=0.1, eval_first=False, feat_dropout=0.4, feedback='student', fix_obs_embedding=False, ignoreid=-100, image_feat_size=2048, inference=False, iters=200000, language_only=False, local_rank=0, log_dir='./logs/logs', log_every=1, lr=1e-05, max_action_len=10, max_instr_len=200, ml_weight=0.2, no_cand_backtrack=False, no_direction=False, node_rank=0, nss_r=0, nss_w=0.1, num_h_layers=0, num_input_actions=1, num_l_layers=9, num_replacement=False, num_x_layers=4, optim='adamW', output_dir='./logs/', parsed_instruction=False, pred_dir='./logs/preds', resume_file=None, resume_optimizer=False, root_dir='../../datasets', seed=0, submit=False, teacher='final', teacher_weight=1.0, tokenizer='bert', train_anno_dir='../../datasets/AVDN/annotations', train_dataset_dir='../../datasets/AVDN/train_images', train_val_on_full=False, val_anno_dir='../../datasets/AVDN/annotations', val_dataset_dir='../../datasets/AVDN/train_images', views=36, vision_only=False, weight_decay=0.0, world_size=2)
+
+
+Some weights of the model checkpoint at roberta-base were not used when initializing RobertaModel: ['lm_head.bias', 'lm_head.layer_norm.weight', 'lm_head.layer_norm.bias', 'lm_head.dense.weight', 'lm_head.dense.bias', 'lm_head.decoder.weight']
+- This IS expected if you are initializing RobertaModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing RobertaModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of the model checkpoint at roberta-base were not used when initializing RobertaModel: ['lm_head.decoder.weight', 'lm_head.dense.weight', 'lm_head.layer_norm.weight', 'lm_head.layer_norm.bias', 'lm_head.dense.bias', 'lm_head.bias']
+- This IS expected if you are initializing RobertaModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing RobertaModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+
+Listener training starts, start iteration: 0
+[W reducer.cpp:1303] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1303] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+Traceback (most recent call last):
+  File "main.py", line 242, in <module>
+Traceback (most recent call last):
+  File "main.py", line 242, in <module>
+    main()
+  File "main.py", line 236, in main
+    train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, rank=rank)
+  File "main.py", line 119, in train
+    main()
+  File "main.py", line 236, in main
+    agent.train(train_loader, args.log_every, feedback=args.feedback, nss_w_weighting=1)
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/4_et_newBackbones/agent.py", line 249, in train
+    train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, rank=rank)
+  File "main.py", line 119, in train
+    agent.train(train_loader, args.log_every, feedback=args.feedback, nss_w_weighting=1)
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/4_et_newBackbones/agent.py", line 249, in train
+    self.rollout(train_ml=self.args.ml_weight, train_rl=False, nss_w=0, **kwargs)  # self.args.nss_w*nss_w_weighting, **kwargs)
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/4_et_newBackbones/agent.py", line 556, in rollout
+    self.rollout(train_ml=self.args.ml_weight, train_rl=False, nss_w=0, **kwargs)  # self.args.nss_w*nss_w_weighting, **kwargs)
+  File "/media/mlr_lab/1F3194C7574F47B8/Aeial-VLN_Shaurya/TG-GAT-ShaK/src/4_et_newBackbones/agent.py", line 556, in rollout
+    im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)
+AttributeError    : im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)'BaseModelOutputWithPooling' object has no attribute 'flatten'
 

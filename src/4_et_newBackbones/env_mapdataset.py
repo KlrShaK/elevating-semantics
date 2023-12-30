@@ -235,7 +235,7 @@ class SimulatorAVDN(object):
         return obs
 
     @staticmethod
-    def F():
+    def _init_aug_transform():    # ORIGINAL name 'F'
         # image aug transforme
         aug_list = list()
         # image blur/

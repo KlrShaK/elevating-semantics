@@ -162,3 +162,39 @@ def merge_dist_results(results):
     for res in results:
         outs.extend(res)
     return outs
+
+
+# ----------------------------CHANGE-----------------
+def init_distributed_mode(rank, args):
+    if "WORLD_SIZE" in os.environ:
+        args.world_size = int(os.environ["WORLD_SIZE"])
+    
+    if args.launcher == 'spawn':  # single node with multiprocessing.spawn
+        args.world_size = args.num_gpus
+        args.rank = rank
+        args.gpu = rank
+    
+    elif 'RANK' in os.environ:
+        args.rank = int(os.environ["RANK"])
+        args.gpu = int(os.environ['LOCAL_RANK'])
+    
+    elif 'SLURM_PROCID' in os.environ:
+        args.rank = int(os.environ['SLURM_PROCID'])
+        args.gpu = args.rank % torch.cuda.device_count()
+    
+    if args.world_size == 1:
+        return
+
+    if 'MASTER_ADDR' in os.environ:
+        args.dist_url = 'tcp://{}:{}'.format(os.environ['MASTER_ADDR'], os.environ['MASTER_PORT'])
+
+    print(f'gpu={args.gpu}, rank={args.rank}, world_size={args.world_size}')
+    args.distributed = True
+    torch.cuda.set_device(args.gpu)
+    args.dist_backend = 'nccl'
+    print('| distributed init (rank {}): {}'.format(args.rank, args.dist_url), flush=True)
+    
+    torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+                                         world_size=args.world_size, rank=args.rank)
+    torch.distributed.barrier()
+

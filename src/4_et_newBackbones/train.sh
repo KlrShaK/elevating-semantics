@@ -26,7 +26,8 @@ flag="--root_dir ../../datasets
       --nss_r 0
       "
 
-#GPUS=$1
+
+GPUS=$1
 NNODES=${NNODES:-1}
 NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29533}
@@ -36,8 +37,8 @@ MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 CUDA_VISIBLE_DEVICES='0,1' python -m torch.distributed.launch --nnodes=$NNODES --node_rank=$NODE_RANK --master_addr=$MASTER_ADDR --nproc_per_node=$ngpus --master_port=$PORT \
   main.py --output_dir ./logs/ $flag
 
-# eval
-CUDA_VISIBLE_DEVICES='4' python main.py --output_dir ./logs/ $flag \
-  --resume_file ./logs/ckpts/best_val_unseen \
-  --inference True \
-  --submit True
+# # eval
+# CUDA_VISIBLE_DEVICES='0' python3 main.py --output_dir ./logs/ $flag \
+#   --resume_file ./logs/ckpts/best_val_unseen \
+#   --inference True \
+#   --submit True

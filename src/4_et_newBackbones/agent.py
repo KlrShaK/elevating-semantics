@@ -17,6 +17,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from models.vln_model import CustomRoBERTModel
 from models.yolov5x import yolov5x_backbone
 from models.ET_haa import ET
+from transformers import ViTModel
 from env_mapdataset import SimulatorAVDN
 from loss import SmoothL1Loss, L1Loss, GIoULoss
 from utils.logger import write_to_record_file, print_progress, timeSince
@@ -123,17 +124,28 @@ class NavCMTAgent:
             self.lang_model = DDP(self.lang_model, broadcast_buffers=False, find_unused_parameters=True, device_ids=[self.args.local_rank], output_device=self.args.local_rank)
 
             # vision model
-            self.vision_model = yolov5x_backbone().cuda()
-            # load weights and convert to ddp model;
-            new_state = torch.load('models/yolov5x_backbone.pth')
-            filter_state_dict = {}
-            for k, v in new_state.items():
-                if int(k.split('.')[0]) <= 9:
-                    filter_state_dict[k] = v
-            new_state = filter_state_dict
+            # -------------------ORIGINAL----------------------------------------------------
+            # self.vision_model = yolov5x_backbone().cuda()
+            # # load weights and convert to ddp model;
+            # new_state = torch.load('models/yolov5x_backbone.pth')
+            # filter_state_dict = {}
+            # for k, v in new_state.items():
+            #     if int(k.split('.')[0]) <= 9:
+            #         filter_state_dict[k] = v
+            # new_state = filter_state_dict
+            # msg = self.vision_model.load_state_dict(new_state, strict=False)
+            # print('!WTF' * 10, msg)
+            #-------------------CHANGE--------------------------------------------------------
+            # self.vision_model = Darknet(self.args.darknet_model_file, 224).cuda()
+            # self.vit = feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224-in21k').cuda()
+            # self.vision_model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k', ).cuda()
+            self.vision_model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k',output_attentions=True, output_hidden_states=True,).cuda()
 
-            msg = self.vision_model.load_state_dict(new_state, strict=False)
-            print('!' * 10, msg)
+            # self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device='cuda')
+            # self.feature_extractor = ViTFeatureExtractor.from_pretrained('facebook/deit-tiny-patch16-224')
+            #----------------------------------------------------------------------------------------------------
+
+            
             self.vision_model = DDP(self.vision_model, broadcast_buffers=False, find_unused_parameters=True, device_ids=[self.args.local_rank], output_device=self.args.local_rank)
 
             # et model
@@ -542,8 +554,16 @@ class NavCMTAgent:
             images = np.ascontiguousarray(images, dtype=np.float32)
             images -= self.rgb_mean
             images /= self.rgb_std
+            # print(images.shape) # (4, 3, 224, 224)
             # [4, 49, 768]
-            im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)
+            # im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)  # ORIGINAL
+            im_feature = self.vision_model(torch.from_numpy(images).cuda())        #CHANGES----------------
+            # print("SHAPES: ")
+            # print(type(im_feature))
+            # print(im_feature.shape) #torch.Size([4, 1280, 7, 7]) 
+            # print(im_feature[0].shape) # torch.Size([1280, 7, 7])
+            im_feature = im_feature.last_hidden_state.flatten(-2, -1)
+
             im_feature_g = self.vln_model_without_ddp.embed_frames(im_feature, input['lang_cls'], torch.LongTensor([t]).cuda())
 
             # direction embeddings;
