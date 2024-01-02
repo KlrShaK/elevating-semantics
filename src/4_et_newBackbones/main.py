@@ -223,10 +223,10 @@ def main():
     args = parse_args()
 
     if args.world_size > 1:
-        # rank = init_distributed_mode(args)   #Original
-        rank = init_distributed(args)
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.barrier()
+        rank = init_distributed_mode(args)   #Original
+        # rank = init_distributed(args)
+        # torch.cuda.set_device(args.local_rank)
+        # torch.distributed.barrier()
     else:
         rank = 0
 
