@@ -77,10 +77,11 @@ def name_the_direction(_angle):
 
 # AUTHOR CHANGE - Hybrid Data Augumenter - Vision
 class SimulatorAVDN(object):
-    def __init__(self, input_batch, batch_size=4, dataset_dir=None):
+    def __init__(self, input_batch, batch_size=4, dataset_dir=None, seg_dir=None):
         self.batch = input_batch
         self.batch_size = batch_size
         self.dataset_dir = dataset_dir
+        self.seg_dir = seg_dir
 
         # for storing the complete remotesencing images and attention maps;
         self.map_batch = {}
@@ -99,12 +100,15 @@ class SimulatorAVDN(object):
             used_map_names.append(self.batch[i]['map_name'])
             if not used_map_names[-1] in self.map_batch.keys():
                 im = cv2.imread(os.path.join(self.dataset_dir, used_map_names[-1] + '.tif'), 1)
-                # seg_im =
+                seg_im = cv2.imread(os.path.join(self.seg_dir, used_map_names[-1] + '.tif'), 1)
 
                 lng_ratio = self.batch[i]['lng_ratio']
                 lat_ratio = self.batch[i]['lat_ratio']
                 im_resized = cv2.resize(im, (int(im.shape[1] * lng_ratio / lat_ratio), im.shape[0]), interpolation=cv2.INTER_AREA)  # ratio_all = lat_ratio
                 self.map_batch[used_map_names[-1]] = im_resized
+
+                seg_resized = cv2.resize(seg_im, (int(seg_im.shape[1] * lng_ratio / lat_ratio), seg_im.shape[0]), interpolation=cv2.INTER_AREA)  # ratio_all = lat_ratio
+                self.seg_map_batch[used_map_names[-1]] = seg_resized
 
                 attention_map = np.zeros((im_resized.shape[0], im_resized.shape[1], 3), np.uint8)
                 for j in range(len(self.batch[i]['attention_list'])):
@@ -153,6 +157,7 @@ class SimulatorAVDN(object):
             M = cv2.getPerspectiveTransform(img_coord_view_area_corners, dst_pts)
             # directly warp the rotated rectangle to get the straightened rectangle
             im_view = cv2.warpPerspective(self.map_batch[item['map_name']], M, (width, height))
+            seg_view = cv2.warpPerspective(self.seg_map_batch[item['map_name']], M, (width, height))     # SEGMENTATION MAP
             gt_saliency = cv2.warpPerspective(self.attention_map_batch[item['map_name']], M, (width, height))
             gt_saliency = np.asarray(cv2.cvtColor(gt_saliency, cv2.COLOR_BGR2GRAY)) / 255
 
@@ -217,6 +222,7 @@ class SimulatorAVDN(object):
                 'starting_angle': item['angle'],
 
                 'current_view': transformed_im_view,
+                'segment_view': seg_view,
                 'gt_saliency': gt_saliency,
 
                 'gt_path_corners': item['gt_path_corners'],
@@ -441,6 +447,7 @@ class ANDHNavBatchMap(Dataset):
 
 
 def simple_cat_collate(data):
+
     if isinstance(data, list):
         return data
     elif isinstance(data, dict):
