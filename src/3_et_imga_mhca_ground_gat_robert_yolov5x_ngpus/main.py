@@ -18,8 +18,7 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 先加入绝对路径，否则会报错，注意__file__表示的是当前执行文件的路径
 from utils.misc import set_random_seed
 from utils.logger import write_to_record_file, print_progress, timeSince
-# from utils.distributed import init_distributed, is_default_gpu, init_distributed_mode   #ORIGINAL
-from utils.distributed import init_distributed, is_default_gpu
+from utils.distributed import init_distributed, is_default_gpu, init_distributed_mode   #ORIGINAL
 
 from agent import NavCMTAgent
 from env_mapdataset import ANDHNavBatchMap, SimulatorAVDN, simple_cat_collate
@@ -223,10 +222,10 @@ def main():
     args = parse_args()
 
     if args.world_size > 1:
-        # rank = init_distributed_mode(args) # ORIGINAL
-        rank = init_distributed(args)
-        torch.cuda.set_device(args.local_rank)
-        torch.distributed.barrier()
+        rank = init_distributed_mode(args) # ORIGINAL
+        # rank = init_distributed(args)
+        # torch.cuda.set_device(args.local_rank)
+        # torch.distributed.barrier()
     else:
         rank = 0
 

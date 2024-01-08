@@ -85,6 +85,7 @@ class SimulatorAVDN(object):
         # for storing the complete remotesencing images and attention maps;
         self.map_batch = {}
         self.attention_map_batch = {}
+        self.seg_map_batch = {}
 
         # load images and attention maps;
         self._load_images_maps()
@@ -98,6 +99,7 @@ class SimulatorAVDN(object):
             used_map_names.append(self.batch[i]['map_name'])
             if not used_map_names[-1] in self.map_batch.keys():
                 im = cv2.imread(os.path.join(self.dataset_dir, used_map_names[-1] + '.tif'), 1)
+                # seg_im =
 
                 lng_ratio = self.batch[i]['lng_ratio']
                 lat_ratio = self.batch[i]['lat_ratio']
@@ -235,7 +237,7 @@ class SimulatorAVDN(object):
         return obs
 
     @staticmethod
-    def F():
+    def _init_aug_transform():
         # image aug transforme
         aug_list = list()
         # image blur/
