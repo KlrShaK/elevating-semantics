@@ -142,7 +142,7 @@ class NavCMTAgent:
             # self.vision_model = Darknet(self.args.darknet_model_file, 224).cuda()
             # self.vit = feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224-in21k').cuda()
             # self.vision_model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k').cuda()
-            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-small', ).cuda()
+            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-base', ).cuda()
             
             # self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device='cuda')
             # self.feature_extractor = ViTFeatureExtractor.from_pretrained('facebook/deit-tiny-patch16-224')
@@ -164,7 +164,7 @@ class NavCMTAgent:
             self.lang_model = CustomRoBERTModel().cuda()
 
             # vision model
-            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-small', ).cuda()
+            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-base', ).cuda()
 
             # et model
             self.vln_model = ET(self.args).cuda()

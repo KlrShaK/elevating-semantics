@@ -100,6 +100,7 @@ class SimulatorAVDN(object):
             used_map_names.append(self.batch[i]['map_name'])
             if not used_map_names[-1] in self.map_batch.keys():
                 im = cv2.imread(os.path.join(self.dataset_dir, used_map_names[-1] + '.tif'), 1)
+                # print(self.seg_dir)
                 seg_im = cv2.imread(os.path.join(self.seg_dir, used_map_names[-1] + '.tif'), 1)
 
                 lng_ratio = self.batch[i]['lng_ratio']
@@ -160,6 +161,18 @@ class SimulatorAVDN(object):
             seg_view = cv2.warpPerspective(self.seg_map_batch[item['map_name']], M, (width, height))     # SEGMENTATION MAP
             gt_saliency = cv2.warpPerspective(self.attention_map_batch[item['map_name']], M, (width, height))
             gt_saliency = np.asarray(cv2.cvtColor(gt_saliency, cv2.COLOR_BGR2GRAY)) / 255
+            
+            #------------------------TESTING Segmentation----------------------------------------
+            # # Displaying the images
+            # cv2.imshow('Transformed Map View', im_view)
+            # cv2.imshow('Transformed Segmentation Map', seg_view)
+            # cv2.imshow('Transformed Ground Truth Saliency', gt_saliency)
+
+            # # Wait for a key press before closing the images
+            # cv2.waitKey(0)
+
+            # # Close all OpenCV windows
+            # cv2.destroyAllWindows()
 
             # -------------------------------------------------------------------------------------- #
             # 2. image augmentation for current view

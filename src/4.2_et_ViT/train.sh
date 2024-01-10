@@ -14,7 +14,7 @@ flag="--root_dir ../../datasets
       --lr 1e-5
       --iters 200000
       --log_every 1
-      --batch_size 4
+      --batch_size 2
       --optim adamW
 
       --ml_weight 0.2      

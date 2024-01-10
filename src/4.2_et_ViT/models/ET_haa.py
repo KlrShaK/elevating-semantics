@@ -68,7 +68,7 @@ class ET(nn.Module):
 
         # vision feature aggregate， action embeddings;
         # self.attention_layer_vision = CrossAttentionBlock(q_dim=768, kv_dim=1280, n_head=12, ) # ORIGINAL
-        self.attention_layer_vision = CrossAttentionBlock(q_dim=768, kv_dim=384, n_head=12, )
+        self.attention_layer_vision = CrossAttentionBlock(q_dim=768, kv_dim=768, n_head=12, )
         self.direction_embedding = nn.Linear(2, 768)
 
         # mask prediction;

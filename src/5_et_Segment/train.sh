@@ -37,7 +37,7 @@ CUDA_VISIBLE_DEVICES='0,1' python -m torch.distributed.launch --nnodes=$NNODES -
   main.py --output_dir ./logs/ $flag
 
 # eval
-CUDA_VISIBLE_DEVICES='4' python main.py --output_dir ./logs/ $flag \
-  --resume_file ./logs/ckpts/best_val_unseen \
-  --inference True \
-  --submit True
+# CUDA_VISIBLE_DEVICES='0' python main.py --output_dir ./logs/ $flag \
+#   --resume_file ./logs/ckpts/best_val_unseen \
+#   --inference True \
+#   --submit True

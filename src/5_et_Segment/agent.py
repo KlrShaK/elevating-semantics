@@ -69,6 +69,29 @@ def compute_iou(a, b):
             iou = 0
     return iou
 
+def dice_loss(inputs, targets, smooth=1e-6):
+    # Apply softmax to the inputs
+    inputs = torch.softmax(inputs, dim=1)
+
+    # Create the one-hot encoding for targets
+    targets_one_hot = F.one_hot(targets, num_classes=inputs.shape[1])
+    targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()
+
+    # Calculate Dice coefficient for each class
+    intersection = torch.sum(inputs * targets_one_hot, dim=(2, 3))
+    union = torch.sum(inputs, dim=(2, 3)) + torch.sum(targets_one_hot, dim=(2, 3))
+
+    dice_score = (2. * intersection + smooth) / (union + smooth)
+    dice_loss = 1 - dice_score.mean()
+
+    return dice_loss
+
+def combined_seg_loss(inputs, targets):
+    ce_loss = torch.nn.CrossEntropyLoss()
+    ce = ce_loss(inputs, targets)
+    dice = dice_loss(inputs, targets)
+    return ce + dice
+
 
 def is_default_gpu(opts) -> bool:
     return opts.local_rank == -1 or dist.get_rank() == 0
@@ -206,7 +229,8 @@ class NavCMTAgent:
         self.loss = 0
         # AUTHOR CHANGE
         for batch_data in loader:
-            self.env = SimulatorAVDN(batch_data, self.args.batch_size, dataset_dir=self.args.train_dataset_dir)
+            # print("train_seg_dir: ", self.args.train_seg_dir)
+            self.env = SimulatorAVDN(batch_data, self.args.batch_size, dataset_dir=self.args.train_dataset_dir, seg_dir=self.args.train_seg_dir)
             for traj in self.rollout(not_in_train=True, **kwargs):  # loop for #batch times
                 self.loss = 0
                 self.results[traj['instr_id']] = traj
@@ -229,8 +253,9 @@ class NavCMTAgent:
                 self.vision_model_optimizer.zero_grad()
                 self.et_optimizer.zero_grad()
                 self.loss = 0
-
-                self.env = SimulatorAVDN(batch_data, self.args.batch_size, dataset_dir=self.args.train_dataset_dir)
+            
+                # print("train_seg_dir: ", self.args.train_seg_dir)
+                self.env = SimulatorAVDN(batch_data, self.args.batch_size, dataset_dir=self.args.train_dataset_dir, seg_dir=self.args.train_seg_dir)
                 if feedback == 'teacher':
                     self.feedback = 'teacher'
                     self.rollout(train_ml=self.args.teacher_weight, train_rl=False, nss_w=self.args.nss_w * nss_w_weighting, **kwargs)
@@ -571,7 +596,7 @@ class NavCMTAgent:
 
             # forward the model;
                     
-            output, pred_saliency, bbox_logits = self.vln_model(
+            output, pred_saliency, bbox_logits, seg_logits = self.vln_model(
                 directions=input['directions'],
                 pos=input['pos'],
                 frames=input['frames'],
@@ -652,6 +677,14 @@ class NavCMTAgent:
                 ml_loss += 0.25 * (1 * loss_cls + 3 * loss_f1 + 1.5 * loss_iou)
                 if ml_loss != ml_loss:  # debug for nan loss
                     print('box', ml_loss)
+
+                # Segmentation loss calculation #TODO 
+                print("seg_logits shape ", seg_logits.shape)
+                seg_loss = combined_seg_loss(seg_logits, OG_inputs)
+                cv2.show(seg_logits)
+                cv2.waitKey(0)
+
+
 
                 #Till here AUTHOR CHANGE
                 # Human attention prediction and NSS loss

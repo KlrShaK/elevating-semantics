@@ -118,6 +118,9 @@ def postprocess_args(args):
     args.train_dataset_dir = os.path.join(ROOTDIR, 'AVDN', 'train_images')
     args.val_dataset_dir = os.path.join(ROOTDIR, 'AVDN', 'train_images')
 
+    args.train_seg_dir = os.path.join(ROOTDIR, 'X_view_dataset', 'trainSegment_images')
+    args.val_seg_dir = os.path.join(ROOTDIR, 'X_view_dataset', 'valSegment_images')
+
 
     args.train_anno_dir = os.path.join(ROOTDIR, 'AVDN', 'annotations')
     args.val_anno_dir = os.path.join(ROOTDIR, 'AVDN', 'annotations')
