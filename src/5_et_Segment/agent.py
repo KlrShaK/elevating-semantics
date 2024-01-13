@@ -679,7 +679,13 @@ class NavCMTAgent:
                     print('box', ml_loss)
 
                 # Segmentation loss calculation #TODO 
-                print("seg_logits shape ", seg_logits.shape)
+                print("seg_logits type ", type(seg_logits))
+                print("seg_logits shape ", seg_logits.shape)  # seg_logits shape  torch.Size([4, 7, 217, 217]) #TODO Incorrect
+                print("obs shape ", len(obs))
+                print("OG_seg_logits shape ", obs[1]['segment_view'])
+                OG_inputs = torch.from_numpy( obs[1]['segment_view'] )
+                OG_inputs = OG_inputs.permute(2, 0, 1)   # Change the order of dimensions to (channels, height, width)
+
                 seg_loss = combined_seg_loss(seg_logits, OG_inputs)
                 cv2.show(seg_logits)
                 cv2.waitKey(0)

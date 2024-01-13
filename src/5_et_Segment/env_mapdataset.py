@@ -158,7 +158,7 @@ class SimulatorAVDN(object):
             M = cv2.getPerspectiveTransform(img_coord_view_area_corners, dst_pts)
             # directly warp the rotated rectangle to get the straightened rectangle
             im_view = cv2.warpPerspective(self.map_batch[item['map_name']], M, (width, height))
-            seg_view = cv2.warpPerspective(self.seg_map_batch[item['map_name']], M, (width, height))     # SEGMENTATION MAP
+            seg_view = cv2.warpPerspective(self.seg_map_batch[item['map_name']], M, (width, height))     # TODO Read in 7 classes() SEGMENTATION MAP
             gt_saliency = cv2.warpPerspective(self.attention_map_batch[item['map_name']], M, (width, height))
             gt_saliency = np.asarray(cv2.cvtColor(gt_saliency, cv2.COLOR_BGR2GRAY)) / 255
             
@@ -166,6 +166,8 @@ class SimulatorAVDN(object):
             # # Displaying the images
             # cv2.imshow('Transformed Map View', im_view)
             # cv2.imshow('Transformed Segmentation Map', seg_view)
+            print(type(seg_view))
+            print(seg_view.shape)
             # cv2.imshow('Transformed Ground Truth Saliency', gt_saliency)
 
             # # Wait for a key press before closing the images

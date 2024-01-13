@@ -78,21 +78,23 @@ class ET(nn.Module):
 
         self.sprel_linear = nn.Linear(1, 1)
 
-        # Segmentation Prediction
+
         self.seg_pred = nn.Sequential(
             nn.Linear(768, 784), nn.Dropout(0.2), nn.ReLU(),
-            nn.Unflatten(1, (28,28)),
+            nn.Unflatten(1, (1, 28, 28)),
             nn.Conv2d(1, 256, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1 ), nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2,padding=1), nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1 ), nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1), nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(64, 64, kernel_size=3, stride=2, padding=1 ), nn.ReLU(),
-            nn.Conv2d(64, 7, kernel_size=1), # Assuming 5 Classes in segmentation
+            nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1), nn.ReLU(),
+            nn.Conv2d(64, 7, kernel_size=1), # Assuming 7 classes in segmentation
         )
+
+
         # final touch
         self.init_weights()
 
