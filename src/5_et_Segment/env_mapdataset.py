@@ -14,6 +14,40 @@ from shapely.geometry import Point, Polygon, LineString, MultiPoint
 from shapely.ops import nearest_points
 
 
+CLASSES = ('background', 'building', 'road', 'water', 'barren', 'forest',
+           'agricultural')
+
+PALETTE = [[255, 255, 255], [255, 0, 0], [255, 255, 0], [0, 0, 255],
+           [159, 129, 183], [0, 255, 0], [255, 195, 128]]
+
+
+def label2rgb(mask):
+    h, w = mask.shape[0], mask.shape[1]
+    mask_rgb = np.zeros(shape=(h, w, 3), dtype=np.uint8)
+    mask_convert = mask[np.newaxis, :, :]
+    mask_rgb[np.all(mask_convert == 0, axis=0)] = [255, 255, 255]
+    mask_rgb[np.all(mask_convert == 1, axis=0)] = [255, 0, 0]
+    mask_rgb[np.all(mask_convert == 2, axis=0)] = [255, 255, 0]
+    mask_rgb[np.all(mask_convert == 3, axis=0)] = [0, 0, 255]
+    mask_rgb[np.all(mask_convert == 4, axis=0)] = [159, 129, 183]
+    mask_rgb[np.all(mask_convert == 5, axis=0)] = [0, 255, 0]
+    mask_rgb[np.all(mask_convert == 6, axis=0)] = [255, 195, 128]
+    return mask_rgb
+
+
+def rgb2label(label):
+    # Create an empty label_seg array with the shape [224, 224, len(CLASSES)]
+    label_seg = np.zeros((*label.shape[:2], len(CLASSES)), dtype=np.uint8)
+
+    # Iterate over each color in the PALETTE
+    for idx, color in enumerate(PALETTE):
+        # Find pixels matching the color and assign the index to label_seg
+        label_seg[np.all(label == color, axis=-1), idx] = 1
+
+    return label_seg
+
+
+
 def compute_iou(a, b):
     a = np.array(a)
     poly1 = Polygon(a).convex_hull
@@ -159,6 +193,8 @@ class SimulatorAVDN(object):
             # directly warp the rotated rectangle to get the straightened rectangle
             im_view = cv2.warpPerspective(self.map_batch[item['map_name']], M, (width, height))
             seg_view = cv2.warpPerspective(self.seg_map_batch[item['map_name']], M, (width, height))     # TODO Read in 7 classes() SEGMENTATION MAP
+            seg_view = rgb2label(seg_view) # [224,224,7]
+            
             gt_saliency = cv2.warpPerspective(self.attention_map_batch[item['map_name']], M, (width, height))
             gt_saliency = np.asarray(cv2.cvtColor(gt_saliency, cv2.COLOR_BGR2GRAY)) / 255
             
