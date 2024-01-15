@@ -69,6 +69,7 @@ def compute_iou(a, b):
             iou = 0
     return iou
 
+
 def dice_loss(inputs, targets, smooth=1e-6):
     # Apply softmax to the inputs
     inputs = torch.softmax(inputs, dim=1)
@@ -674,7 +675,7 @@ class NavCMTAgent:
                 bbox_pre_xyxy = bbox_cxcywh_to_xyxy(bbox_pre) * 224
                 loss_iou = self.bbox_iou_loss(bbox_pre_xyxy, bbox_target_xyxy)
 
-                ml_loss += 0.25 * (1 * loss_cls + 3 * loss_f1 + 1.5 * loss_iou)
+                ml_loss += 0.25 * (1 * loss_cls + 3 * loss_f1 + 1.5 * loss_iou)   # Mixing Ratio
                 if ml_loss != ml_loss:  # debug for nan loss
                     print('box', ml_loss)
 
@@ -683,7 +684,7 @@ class NavCMTAgent:
                 print("seg_logits shape ", seg_logits.shape)  # seg_logits shape  torch.Size([4, 7, 217, 217]) #TODO Incorrect
                 print("obs shape ", len(obs))
                 print("OG_seg_logits shape ", obs[1]['segment_view'])
-                OG_inputs = torch.from_numpy( obs[1]['segment_view'] )
+                OG_inputs = torch.from_numpy(obs[1]['segment_view']).cuda()
                 OG_inputs = OG_inputs.permute(2, 0, 1)   # Change the order of dimensions to (channels, height, width)
 
                 seg_loss = combined_seg_loss(seg_logits, OG_inputs)
@@ -695,6 +696,9 @@ class NavCMTAgent:
                 #Till here AUTHOR CHANGE
                 # Human attention prediction and NSS loss
                 for i in range(len(obs)):
+
+                    # add Segmentation loss calculation here
+
                     pred_saliency_cpu = pred_saliency[i].clip(0, 1).cpu().detach().numpy().reshape(224, 224, 1)
                     gt_saliency = obs[i]['gt_saliency'].reshape(224, 224, 1)
                     if np.sum(obs[i]['gt_saliency']) > 0:
