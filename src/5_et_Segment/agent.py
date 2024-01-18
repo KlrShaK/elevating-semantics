@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.nn.functional as F
 
 from models.vln_model import CustomRoBERTModel
 from models.yolov5x import yolov5x_backbone
@@ -70,18 +71,39 @@ def compute_iou(a, b):
     return iou
 
 
-def dice_loss(inputs, targets, smooth=1e-6):
-    # Apply softmax to the inputs
-    inputs = torch.softmax(inputs, dim=1)
+# TODO DIFFFRENT LOSS FOR SEG
+# ALPHA = 0.5 # < 0.5 penalises FP more, > 0.5 penalises FN more
+# BETA = 0.5
+# CE_RATIO = 0.5 #weighted contribution of modified CE loss compared to Dice loss
 
-    # Create the one-hot encoding for targets
-    targets_one_hot = F.one_hot(targets, num_classes=inputs.shape[1])
-    targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()
+# class ComboLoss(nn.Module):
+#     def __init__(self, weight=None, size_average=True):
+#         super(ComboLoss, self).__init__()
+
+#     def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, eps=1e-9):
+#         inputs = F.softmax(inputs)
+        
+#         #True Positives, False Positives & False Negatives
+#         intersection = torch.sum(inputs * targets, dim=(2, 3))  
+#         dice = (2. * intersection + smooth) / (torch.sum(inputs, dim=(2, 3)) + torch.sum(targets, dim=(2, 3)) + smooth)
+        
+#         inputs = torch.clamp(inputs, eps, 1.0 - eps)       
+#         out = - (ALPHA * ((targets * torch.log(inputs)) + ((1 - ALPHA) * (1.0 - targets) * torch.log(1.0 - inputs))))
+#         weighted_ce = out.mean(-1)
+#         weighted_ce = weighted_ce.mean(dim=-1)
+#         print(weighted_ce.shape)
+#         print(dice.shape)
+#         combo = (CE_RATIO * weighted_ce) - ((1 - CE_RATIO) * dice)
+        
+#         return combo
+
+
+def dice_loss(inputs, targets, smooth=1e-6):
+    inputs = F.softmax(inputs)
 
     # Calculate Dice coefficient for each class
-    intersection = torch.sum(inputs * targets_one_hot, dim=(2, 3))
-    union = torch.sum(inputs, dim=(2, 3)) + torch.sum(targets_one_hot, dim=(2, 3))
-
+    intersection = torch.sum(inputs * targets, dim=(2, 3))
+    union = torch.sum(inputs, dim=(2, 3)) + torch.sum(targets, dim=(2, 3))
     dice_score = (2. * intersection + smooth) / (union + smooth)
     dice_loss = 1 - dice_score.mean()
 
@@ -92,6 +114,31 @@ def combined_seg_loss(inputs, targets):
     ce = ce_loss(inputs, targets)
     dice = dice_loss(inputs, targets)
     return ce + dice
+
+
+CLASSES = ('background', 'building', 'road', 'water', 'barren', 'forest',
+           'agricultural')
+
+PALETTE = [[255, 255, 255], [255, 0, 0], [255, 255, 0], [0, 0, 255],
+           [159, 129, 183], [0, 255, 0], [255, 195, 128]]
+
+def label2rgb(label):
+    # Ensure the label tensor has the same number of channels as classes
+    assert label.shape[-1] == len(CLASSES), "Invalid number of channels in the label tensor"
+
+    # Create an empty RGB image with the same shape as the label tensor
+    h, w, _ = label.shape
+    rgb_image = np.zeros((h, w, 3), dtype=np.uint8)
+
+    # Iterate over each class and color in the PALETTE
+    for idx, color in enumerate(PALETTE):
+        # Find pixels in the label tensor where the class index matches
+        class_pixels = label[..., idx].astype(bool)
+        
+        # Assign the corresponding color to the RGB image
+        rgb_image[class_pixels] = color
+
+    return rgb_image
 
 
 def is_default_gpu(opts) -> bool:
@@ -277,6 +324,7 @@ class NavCMTAgent:
                 self.et_optimizer.step()
 
                 if self.default_gpu:
+                    pass # TODO uncomment and delete
                     print_progress(idx, n_epochs * len(loader.dataset) / dist.get_world_size() / self.env.batch_size, prefix='Progress:', suffix='Complete', bar_length=80)
 
     def NSS(self, sal, fix):
@@ -545,7 +593,7 @@ class NavCMTAgent:
 
         # Init the logs
         ml_loss = 0.
-
+        # print(" Loss Begin : ", ml_loss)
         input = {
             'directions': [],
             'frames': [],
@@ -647,7 +695,7 @@ class NavCMTAgent:
                         if ml_loss != ml_loss:  # debug for nan loss
                             print('0', ml_loss)
 
-                
+                # print("loss gp : ", ml_loss)
                 # AUTHOR CHANGE
                 # Bbox and label Loss;
                 bbox_pre, label_pre = bbox_logits[:, :4].sigmoid(), bbox_logits[:, 4]
@@ -676,20 +724,29 @@ class NavCMTAgent:
                 loss_iou = self.bbox_iou_loss(bbox_pre_xyxy, bbox_target_xyxy)
 
                 ml_loss += 0.25 * (1 * loss_cls + 3 * loss_f1 + 1.5 * loss_iou)   # Mixing Ratio
+                # print("Loss after bbox: ", ml_loss)
                 if ml_loss != ml_loss:  # debug for nan loss
                     print('box', ml_loss)
 
                 # Segmentation loss calculation #TODO 
-                print("seg_logits type ", type(seg_logits))
-                print("seg_logits shape ", seg_logits.shape)  # seg_logits shape  torch.Size([4, 7, 217, 217]) #TODO Incorrect
-                print("obs shape ", len(obs))
-                print("OG_seg_logits shape ", obs[1]['segment_view'])
-                OG_inputs = torch.from_numpy(obs[1]['segment_view']).cuda()
-                OG_inputs = OG_inputs.permute(2, 0, 1)   # Change the order of dimensions to (channels, height, width)
+                # print("seg_logits type ", type(seg_logits))
+                # print("seg_logits shape ", seg_logits.shape)  # seg_logits shape  torch.Size([4, 7, 217, 217]) #TODO Incorrect
+                # print("obs shape ", len(obs))
+                # print("OG_seg_logits shape ", targets.shape)                
+                
 
-                seg_loss = combined_seg_loss(seg_logits, OG_inputs)
-                cv2.show(seg_logits)
-                cv2.waitKey(0)
+                #---------------------------APPROACH - 1-----------------------------------------------------------------------------------------
+                segment_views = [ (torch.from_numpy(obs[i]['segment_view'])).permute(2, 0, 1) for i in range(len(obs))]
+                targets = torch.from_numpy(np.stack(segment_views, axis=0)).cuda()
+                
+                SEG_LOSS_FACTOR = 1
+                seg_loss = combined_seg_loss(seg_logits, targets)
+                ml_loss += seg_loss * SEG_LOSS_FACTOR
+                # print("Loss after Seg: ", ml_loss)
+                # CHANGED see segmented loss
+                # print(seg_loss)
+                # cv2.imshow(' ',label2rgb(seg_logits[2].permute(1, 2, 0).cpu().detach().numpy()))
+                # cv2.waitKey(0)
 
 
 
@@ -727,7 +784,8 @@ class NavCMTAgent:
 
                         cv2.imwrite(self.args.pred_dir + '/debug_images/' + self.env_name + 'val' + obs[i]['map_name'] + '_' + obs[i]['route_index'] + '_input_' + str(t) + '.jpg',
                                     obs[i]['current_view'])
-
+                # print("Loss NSS : ", ml_loss, nss_w)
+                # TODO look at NSS loss if author implementation is correct
             # -------------------------------------------------------------------------------------- #
             # # Log the trajectory
             # -------------------------------------------------------------------------------------- #
@@ -900,7 +958,7 @@ class NavCMTAgent:
                     # else:
                     #     cv2.imwrite(self.args.pred_dir + '/debug_images/' + self.env_name + 'train' + obs[i]['map_name'] + '_'+ obs[i]['route_index']+'.jpg',
                     # img)
-
+        # print("Loss End : ", ml_loss)
         if train_ml is not None:
             self.loss += ml_loss * train_ml / batch_size
             self.logs['IL_loss'].append((ml_loss * train_ml / batch_size).item())

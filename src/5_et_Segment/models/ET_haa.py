@@ -91,7 +91,7 @@ class ET(nn.Module):
             nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
             nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1), nn.ReLU(),
-            nn.Conv2d(64, 7, kernel_size=1), # Assuming 7 classes in segmentation
+            nn.Conv2d(64, 7, kernel_size=1),# Assuming 7 classes in segmentation
         )
 
 
@@ -135,16 +135,16 @@ class ET(nn.Module):
         encoder_out_visual = encoder_out[:, emb_lang.shape[1] + np.max(inputs['lenths']) - 1]
         encoder_out_direction = encoder_out[:, emb_lang.shape[1] + 2 * np.max(inputs['lenths']) - 1]
         # get the output actions
-        print("raw encoder visual shape : ", encoder_out_visual.shape)
+        # print("raw encoder visual shape : ", encoder_out_visual.shape)
         decoder_input = encoder_out_visual.reshape(-1, self.args.demb)
         action_decoder_input = encoder_out_direction.reshape(-1, self.args.demb)
 
         # decoder_input = emb_directions[:,-1].reshape(-1, self.args.demb)
         output = self.decoder_2_action_full(action_decoder_input)
         h_sali = self.fc(decoder_input)
-        print("before h-sali",h_sali.shape)
+        # print("before h-sali",h_sali.shape)
         h_sali = h_sali.view(-1, 1, 8, 8)
-        print("after h-sali",h_sali.shape)
+        # print("after h-sali",h_sali.shape)
         pred_saliency = nn.functional.interpolate(h_sali, size=(224, 224), mode='bilinear', align_corners=False)
         # bbox predicton;
     

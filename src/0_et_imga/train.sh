@@ -29,6 +29,8 @@ flag="--root_dir ../../datasets
       --darknet_weight_file ../../datasets/AVDN/pretrain_weights/best.pt
       "
 
+# Experiment 0.1
+
 # train
 CUDA_VISIBLE_DEVICES='0' python3 main.py --output_dir ./logs/ $flag
 

@@ -12,7 +12,7 @@ flag="--root_dir ../../datasets
       --max_instr_len 200
 
       --lr 1e-5
-      --iters 200000
+      --iters 600000
       --log_every 1
       --batch_size 2
       --optim adamW
@@ -36,7 +36,7 @@ MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
 # train multi gpu;
 CUDA_VISIBLE_DEVICES='0,1' python -m torch.distributed.launch --nnodes=$NNODES --node_rank=$NODE_RANK --master_addr=$MASTER_ADDR --nproc_per_node=$ngpus --master_port=$PORT \
   main.py --output_dir ./logs/ $flag \
-  --resume_file ./logs/ckpts/best_val_unseen \
+  --resume_file ./logs/ckpts/latest_dict_316710 \
 # train multi gpu;
 # CUDA_VISIBLE_DEVICES='0' python3 main.py --output_dir ./logs/ $flag
 

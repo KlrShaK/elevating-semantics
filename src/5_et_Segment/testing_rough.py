@@ -1,53 +1,39 @@
+# file for code testing purpose only
+# TODO remove in prod
 
-def dice_loss(inputs, targets, smooth=1e-6):
-    # Apply softmax to the inputs
-    inputs = torch.softmax(inputs, dim=1)
+import torch
+import torch.nn.functional as F
 
-    # Create the one-hot encoding for targets
-    targets_one_hot = F.one_hot(targets, num_classes=inputs.shape[1])
-    targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()
-
-    # Calculate Dice coefficient for each class
-    intersection = torch.sum(inputs * targets_one_hot, dim=(2, 3))
-    union = torch.sum(inputs, dim=(2, 3)) + torch.sum(targets_one_hot, dim=(2, 3))
-
-    dice_score = (2. * intersection + smooth) / (union + smooth)
-    dice_loss = 1 - dice_score.mean()
-
-    return dice_loss
-
-def combined_seg_loss(inputs, targets):
-    ce_loss = torch.nn.CrossEntropyLoss()
-    ce = ce_loss(inputs, targets)
-    dice = dice_loss(inputs, targets)
-    return ce + dice
-
-
-# Function to generate synthetic data
-def generate_synthetic_data(batch_size, num_classes, height, width):
-    # Generate random predictions
-    inputs = torch.rand(batch_size, num_classes, height, width)
-    # Generate random target labels
-    targets = torch.randint(0, num_classes, (batch_size, height, width))
-    return inputs, targets
 
 # Testing the functions
 def test_loss_functions():
     # Parameters for synthetic data
     batch_size = 10
-    num_classes = 5
+    num_classes = 7
     height = 256
     width = 256
 
-    # Generate synthetic data
-    inputs, targets = generate_synthetic_data(batch_size, num_classes, height, width)
 
-    # Compute losses
-    dice_loss_value = dice_loss(inputs, targets)
-    combined_loss_value = combined_seg_loss(inputs, targets)
+class ComboLoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(ComboLoss, self).__init__()
 
-    print(f"Dice Loss: {dice_loss_value.item()}")
-    print(f"Combined Segmentation Loss: {combined_loss_value.item()}")
+    def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, eps=1e-9):
+        
+        # #flatten label and prediction tensors
+        # inputs = inputs.view(-1)
+        # targets = targets.view(-1)
+        
+        #True Positives, False Positives & False Negatives
+        intersection = (inputs * targets).sum()    
+        dice = (2. * intersection + smooth) / (inputs.sum() + targets.sum() + smooth)
+        
+        inputs = torch.clamp(inputs, eps, 1.0 - eps)       
+        out = - (ALPHA * ((targets * torch.log(inputs)) + ((1 - ALPHA) * (1.0 - targets) * torch.log(1.0 - inputs))))
+        weighted_ce = out.mean(-1)
+        combo = (CE_RATIO * weighted_ce) - ((1 - CE_RATIO) * dice)
+        
+        return combo
 
 # Run the test
 test_loss_functions()
