@@ -150,7 +150,6 @@ class ET(nn.Module):
     
         bbox_logits = self.bbox_pred(decoder_input)
 
-        # Assuming 'decoder_input' is the feature tensor of shape [batch_size, feature_dim, H, W]
         seg_logits = self.seg_pred(decoder_input)
 
 

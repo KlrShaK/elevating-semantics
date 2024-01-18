@@ -542,8 +542,11 @@ class NavCMTAgent:
             images = np.ascontiguousarray(images, dtype=np.float32)
             images -= self.rgb_mean
             images /= self.rgb_std
+            print(images.shape) # (4, 3, 224, 224)
             # [4, 49, 768]
-            im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)
+            im_feature = self.vision_model(torch.from_numpy(images).cuda()) 
+            print("bf",im_feature.shape) # torch.Size([4, 1280, 7, 7])
+            im_feature = im_feature.flatten(-2, -1)
             im_feature_g = self.vln_model_without_ddp.embed_frames(im_feature, input['lang_cls'], torch.LongTensor([t]).cuda())
 
             # direction embeddings;

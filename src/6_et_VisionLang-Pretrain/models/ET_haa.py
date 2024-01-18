@@ -26,8 +26,9 @@ class CrossAttentionBlock(nn.Module):
         img_feats: [bs,dim,length]
         """
         # reshape
+        print(img_feats.shape)
         img_feats = img_feats.permute(0, 2, 1)  # [bs, 512, 49] --> [bs, 49, 512]
-
+        print(img_feats.shape)
         # cross attention
         weighted_context, _ = self.self_attn(query=self.ln_q_1(text_cls.unsqueeze(1)), key=self.ln_kv_1(img_feats), value=self.ln_kv_1(img_feats))  # [bs,1,dim]
         weighted_context = weighted_context.squeeze(1)  # [bs,dim]
