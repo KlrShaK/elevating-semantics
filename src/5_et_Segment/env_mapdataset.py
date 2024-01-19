@@ -113,7 +113,7 @@ def name_the_direction(_angle):
     elif np.abs(_angle - 270) <= 22.5:
         return 'west'
 
-# AUTHOR CHANGE - Hybrid Data Augumenter - Vision
+# TODO ADD All Data
 class SimulatorAVDN(object):
     def __init__(self, input_batch, batch_size=4, dataset_dir=None, seg_dir=None):
         self.batch = input_batch

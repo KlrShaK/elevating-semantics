@@ -20,13 +20,13 @@ from utils.misc import set_random_seed
 from utils.logger import write_to_record_file, print_progress, timeSince
 from utils.distributed import init_distributed, is_default_gpu, init_distributed_mode   #ORIGINAL
 
-from agent import NavCMTAgent
-from env_mapdataset import ANDHNavBatchMap, SimulatorAVDN, simple_cat_collate
+from agentShak import PreTrainCMTAgent
+from env_mapdatasetShak import ANDHNavBatchMapMLM, ANDHNavBatchMap, SimulatorAVDN, simple_cat_collate
 from parser import parse_args
 
 
 def build_dataset(args, rank=0, is_test=False):
-    dataset_class = ANDHNavBatchMap
+    dataset_class = ANDHNavBatchMapMLM
 
     train_env = dataset_class(
         args.train_anno_dir,
@@ -63,7 +63,7 @@ def train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, au
         record_file = os.path.join(args.log_dir, 'train.txt')
         write_to_record_file(str(args) + '\n\n', record_file)
 
-    agent_class = NavCMTAgent
+    agent_class = PreTrainCMTAgent
     agent = agent_class(args, rank=rank)
 
     # -------------------------------------------------------------------------------------- #
