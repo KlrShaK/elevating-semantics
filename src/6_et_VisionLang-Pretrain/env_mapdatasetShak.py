@@ -267,8 +267,12 @@ class SimulatorAVDN(object):
 
                 'instructions': item['instructions'],
                 'pre_dialogs': item['pre_dialogs'],
+            # MLM
+                'masked_token': item['masked_token'],
+                'token_ids': item['token_ids'],
+                'token_label': item['token_label'],
 
-                # bbox target;
+            # bbox target;
                 'bbox_target_xyxy': target_xyxy,
                 'bbox_labels': bbox_labels,
                 'img_w': 224,

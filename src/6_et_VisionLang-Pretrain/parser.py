@@ -59,6 +59,8 @@ def parse_args():
     parser.add_argument('--no_direction', action='store_true', default=False)
     parser.add_argument('--language_only', action='store_true', default=False)
     parser.add_argument('--vision_only', action='store_true', default=False)
+    parser.add_argument('--mlm', action='store_true', default=True)
+    parser.add_argument('--mrc', action='store_true', default=True)
     parser.add_argument('--fix_obs_embedding', action='store_true', default=False)
 
     parser.add_argument('--num_l_layers', type=int, default=9)

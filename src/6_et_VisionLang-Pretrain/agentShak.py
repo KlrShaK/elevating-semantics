@@ -380,51 +380,64 @@ class PreTrainCMTAgent:
             else:
                 lang_inputs.append(ob['instructions'])
 
-        encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
-        input_ids = encoding['input_ids'].cuda()
-        attention_mask = encoding['attention_mask'].cuda()
-        lang_features, _, _ = self.lang_model(input_ids, attention_mask)
-
-        if not self.args.train_val_on_full:
-            lang_inputs = []
-            for i, ob in enumerate(obs):
-                lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
-
+        if 'normal' in self.args.tasks:
             encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
             input_ids = encoding['input_ids'].cuda()
             attention_mask = encoding['attention_mask'].cuda()
-            _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
+            lang_features, _, _ = self.lang_model(input_ids, attention_mask)
 
-        # Record starting points of the current batch
-        current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]
-        current_directions = [np.array(ob['starting_angle']) for ob in obs]
-        direction_t = torch.from_numpy(np.array(current_directions))
-        traj = [defaultdict(list) for ob in obs]
-        for i, ob in enumerate(obs):
-            traj[i]['instr_id'] = ob['map_name'] + '__' + ob['route_index']
-            rounds = lang_inputs[i].split('[QUE]')
-            remove = 0
-            for r in rounds:
-                if 'Yes' in r[0:5]:
-                    remove += 1
-            traj[i]['num_dia'] = len(rounds) - remove
-            traj[i]['path_corners'] = [(np.array(ob['gt_path_corners'][0]), ob['starting_angle'])]
-            traj[i]['gt_path_corners'] = ob['gt_path_corners']
+            if not self.args.train_val_on_full:
+                lang_inputs = []
+                for i, ob in enumerate(obs):
+                    lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
 
-        # Initialization the finishing status
-        ended = np.array([False] * batch_size)
+                encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+                input_ids = encoding['input_ids'].cuda()
+                attention_mask = encoding['attention_mask'].cuda()
+                _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
 
-        # Init the logs
-        ml_loss = 0.
+            # Record starting points of the current batch
+            current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]
+            current_directions = [np.array(ob['starting_angle']) for ob in obs]
+            direction_t = torch.from_numpy(np.array(current_directions))
+            traj = [defaultdict(list) for ob in obs]
+            for i, ob in enumerate(obs):
+                traj[i]['instr_id'] = ob['map_name'] + '__' + ob['route_index']
+                rounds = lang_inputs[i].split('[QUE]')
+                remove = 0
+                for r in rounds:
+                    if 'Yes' in r[0:5]:
+                        remove += 1
+                traj[i]['num_dia'] = len(rounds) - remove
+                traj[i]['path_corners'] = [(np.array(ob['gt_path_corners'][0]), ob['starting_angle'])]
+                traj[i]['gt_path_corners'] = ob['gt_path_corners']
 
-        input = {
-            'directions': [],
-            'frames': [],
-            'pos': [],
-            'lenths': [0 for _ in range(batch_size)],
-            'lang': lang_features,
-            # 'lang_mask': instru_attention_mask,
-            'lang_cls': cls_hidden, }
+            # Initialization the finishing status
+            ended = np.array([False] * batch_size)
+
+            # Init the logs
+            ml_loss = 0.
+
+            input = {
+                'directions': [],
+                'frames': [],
+                'pos': [],
+                'lenths': [0 for _ in range(batch_size)],
+                'lang': lang_features,
+                # 'lang_mask': instru_attention_mask,
+                'lang_cls': cls_hidden, }
+
+
+        if 'mlm' in self.args.mlm:
+            encoding = obs['masked_token'].cuda()
+
+            pass
+            # self.mlm_head = BertOnlyMLMHead(self.config)
+        if 'mrc' in self.args.mrc:
+            pass
+            # self.image_classifier = RegionClassification(self.config.hidden_size, self.config.image_prob_size)
+
+
 
         # -------------------------------------------------------------------------------------- #
         # begin iteration;
@@ -469,7 +482,7 @@ class PreTrainCMTAgent:
                 if not ended[i]:
                     input['lenths'][i] += 1
 
-            # forward the model;
+            # ****************forward the model************************;
                     
             output, pred_saliency, bbox_logits = self.vln_model(
                 directions=input['directions'],

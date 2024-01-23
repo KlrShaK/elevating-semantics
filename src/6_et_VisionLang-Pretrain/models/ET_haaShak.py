@@ -70,7 +70,6 @@ class ET(nn.Module):
         self.init_weights()
 
     # AUTHOR CHANGE GAT - Graph Aware Transformer - vision 
-    #Todo Read and understand
     def forward(self, **inputs):
         """
         forward the model for multiple time-steps (used for training)

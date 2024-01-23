@@ -2,6 +2,7 @@
 datasets/yolov5x_backbone.pth
 src/*/models/yolov5x_backbone.pth
 /.vscode
+/.idea
 /src/*/utils/_pycache_
 /src/*/logs/*
 /src/*/logs_OG/*
