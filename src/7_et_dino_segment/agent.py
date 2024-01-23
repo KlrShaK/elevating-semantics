@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn.functional as F
+from transformers import ViTModel, AutoModel
 
 from models.vln_model import CustomRoBERTModel
 from models.yolov5x import yolov5x_backbone
@@ -194,17 +195,8 @@ class NavCMTAgent:
             self.lang_model = DDP(self.lang_model, broadcast_buffers=False, find_unused_parameters=True, device_ids=[self.args.local_rank], output_device=self.args.local_rank)
 
             # vision model
-            self.vision_model = yolov5x_backbone().cuda()
-            # load weights and convert to ddp model;
-            new_state = torch.load('models/yolov5x_backbone.pth')
-            filter_state_dict = {}
-            for k, v in new_state.items():
-                if int(k.split('.')[0]) <= 9:
-                    filter_state_dict[k] = v
-            new_state = filter_state_dict
-
-            msg = self.vision_model.load_state_dict(new_state, strict=False)
-            print('!' * 10, msg)
+            # self.vision_model = yolov5x_backbone().cuda()
+            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-base', ).cuda()
             self.vision_model = DDP(self.vision_model, broadcast_buffers=False, find_unused_parameters=True, device_ids=[self.args.local_rank], output_device=self.args.local_rank)
 
             # et model
@@ -220,16 +212,8 @@ class NavCMTAgent:
             self.lang_model = CustomRoBERTModel().cuda()
 
             # vision model
-            self.vision_model = yolov5x_backbone().cuda()
-            new_state = torch.load('models/yolov5x_backbone.pth')
-            filter_state_dict = {}
-            for k, v in new_state.items():
-                if int(k.split('.')[0]) <= 9:
-                    filter_state_dict[k] = v
-            new_state = filter_state_dict
+            self.vision_model = AutoModel.from_pretrained('facebook/dinov2-base', ).cuda()
 
-            msg = self.vision_model.load_state_dict(new_state, strict=False)
-            print('!' * 10, msg)
 
             # et model
             self.vln_model = ET(self.args).cuda()
@@ -617,7 +601,9 @@ class NavCMTAgent:
             images -= self.rgb_mean
             images /= self.rgb_std
             # [4, 49, 768]
-            im_feature = self.vision_model(torch.from_numpy(images).cuda()).flatten(-2, -1)
+
+            im_feature = self.vision_model(torch.from_numpy(images).cuda())
+            im_feature = im_feature.last_hidden_state   # [4, 1024, 257] DinoV2 - batch_size, sequence_length, hidden_size
             im_feature_g = self.vln_model_without_ddp.embed_frames(im_feature, input['lang_cls'], torch.LongTensor([t]).cuda())
 
             # direction embeddings;
@@ -1006,6 +992,7 @@ class NavCMTAgent:
                 print("NOTICE: LOADing ALL KEYS IN THE ", name)
                 state_dict = states[name]['state_dict']
             else:
+                print("chal na bhai")
                 print("NOTICE: DIFFERENT KEYS IN THE ", name)
                 # if not list(model_keys)[0].startswith('module.') and list(load_keys)[0].startswith('module.'):
                 #     state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}

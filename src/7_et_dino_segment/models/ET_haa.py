@@ -26,7 +26,7 @@ class CrossAttentionBlock(nn.Module):
         img_feats: [bs,dim,length]
         """
         # reshape
-        img_feats = img_feats.permute(0, 2, 1)  # [bs, 512, 49] --> [bs, 49, 512]
+        # img_feats = img_feats.permute(0, 2, 1)  # [bs, 512, 49] --> [bs, 49, 512]
 
         # cross attention
         weighted_context, _ = self.self_attn(query=self.ln_q_1(text_cls.unsqueeze(1)), key=self.ln_kv_1(img_feats), value=self.ln_kv_1(img_feats))  # [bs,1,dim]
@@ -60,7 +60,7 @@ class ET(nn.Module):
             nn.Linear(32, 4), )
 
         # vision feature aggregate， action embeddings;
-        self.attention_layer_vision = CrossAttentionBlock(q_dim=768, kv_dim=1280, n_head=12, )
+        self.attention_layer_vision = CrossAttentionBlock(q_dim=768, kv_dim=768, n_head=12, )
         self.direction_embedding = nn.Linear(2, 768)
 
         # mask prediction;
@@ -84,13 +84,13 @@ class ET(nn.Module):
             nn.Unflatten(1, (1, 28, 28)),
             nn.Conv2d(1, 256, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2,padding=1), nn.ReLU(),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'), nn.ReLU(),                     # nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2,padding=1), nn.ReLU(),
+            nn.Conv2d(256, 128, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1), nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'), nn.ReLU(),                     # nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2,padding=1), nn.ReLU(),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1), nn.Dropout(0.2), nn.ReLU(),
 
-            nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1), nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode='nearest'), nn.ReLU(),                     # nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2,padding=1), nn.ReLU(),
             nn.Conv2d(64, 7, kernel_size=1),# Assuming 7 classes in segmentation
         )
 
@@ -149,7 +149,6 @@ class ET(nn.Module):
         # bbox predicton;
     
         bbox_logits = self.bbox_pred(decoder_input)
-
         seg_logits = self.seg_pred(decoder_input)
 
 
