@@ -21,7 +21,7 @@ from utils.logger import write_to_record_file, print_progress, timeSince
 from utils.distributed import init_distributed, is_default_gpu, init_distributed_mode   #ORIGINAL
 
 from agentShak import PreTrainCMTAgent
-from env_mapdatasetShak import ANDHNavBatchMapMLM, ANDHNavBatchMap, SimulatorAVDN, simple_cat_collate
+from env_mapdatasetShak import ANDHNavBatchMapMLM,  SimulatorAVDN, simple_cat_collate # , ANDHNavBatchMap
 from parser import parse_args
 
 

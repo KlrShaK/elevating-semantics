@@ -292,6 +292,36 @@ class ANDHNavBatchMap(Dataset):
 
             print('%s loaded with %d instructions, using splits: %s' % (self.__class__.__name__, len(data), split))
 
+for pre_dialog_set in pre_dialogs:
+    for pre_dialog in pre_dialog_set:
+        item[pre_dialogs] += ' ' + (item['pre_dialogs']).lower()
+
+# # class YourClass:
+#     def __init__(self, anno_dir, dataset_dir, splits, seed=0):
+#         self.dataset_dir = dataset_dir
+#         self.data_list = []
+
+#         for split in splits:
+#             data = json.load(open(os.path.join(anno_dir, f'{split}_data.json')))
+#             for item in data:
+#                 item['angle'] = round(item['angle']) % 360
+#                 item['gt_path_corners'] = [np.array(corners) for corners in item['gt_path_corners']]
+                
+#                 # Handle both single string and list of instructions
+#                 instructions = item['instructions'] if isinstance(item['instructions'], list) else [item['instructions']]
+#                 pre_dialogs = item['pre_dialogs'] if item['pre_dialogs'] else [""]  # Ensure pre_dialogs is a list
+
+#                 for instruction in instructions:
+#                     for pre_dialog in pre_dialogs:
+#                         # Create a new item for each combination
+#                         new_item = item.copy()
+#                         new_item['instructions'] = instruction.lower()
+#                         new_item['pre_dialogs'] = pre_dialog.lower()
+                        
+#                         # Append the new item
+#                         self.data_list.append(new_item)
+
+
     def __len__(self):
         return len(self.data_list)
 

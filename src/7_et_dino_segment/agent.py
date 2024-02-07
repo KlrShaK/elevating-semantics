@@ -725,7 +725,7 @@ class NavCMTAgent:
                 segment_views = [ (torch.from_numpy(obs[i]['segment_view'])).permute(2, 0, 1) for i in range(len(obs))]
                 targets = torch.from_numpy(np.stack(segment_views, axis=0)).cuda()
                 
-                SEG_LOSS_FACTOR = 1
+                SEG_LOSS_FACTOR = 0.5
                 seg_loss = combined_seg_loss(seg_logits, targets)
                 ml_loss += seg_loss * SEG_LOSS_FACTOR
                 # print("Loss after Seg: ", ml_loss)

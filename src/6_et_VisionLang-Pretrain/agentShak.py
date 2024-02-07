@@ -33,43 +33,6 @@ def debug_memory():
     for line in tensors:
         print('{}\t{}'.format(*line))
 
-
-# https://programmerah.com/using-shapely-geometry-polygon-to-calculate-the-iou-of-any-two-quadrilaterals-28395/
-def compute_iou(a, b):
-    a = np.array(a)  # quadrilateral two-dimensional coordinate representation
-    poly1 = Polygon(
-        a).convex_hull  # python quadrilateral object, will automatically calculate four points, the last four points in the order of: top left bottom right bottom right top left top
-    # print(Polygon(a).convex_hull)  # you can print to see if this is the case
-
-    b = np.array(b)
-    poly2 = Polygon(b).convex_hull
-    # print(Polygon(b).convex_hull)
-
-    union_poly = np.concatenate((a, b))  # Merge two box coordinates to become 8*2
-    # print(union_poly)
-    # print(MultiPoint(union_poly).convex_hull)  # contains the smallest polygon point of the two quadrilaterals
-    if not poly1.intersects(poly2):  # If the two quadrilaterals do not intersect
-        iou = 0
-    else:
-        try:
-            inter_area = poly1.intersection(poly2).area  # intersection area
-            # print(inter_area)
-            # union_area = poly1.area + poly2.area - inter_area
-            union_area = MultiPoint(union_poly).convex_hull.area
-            # print(union_area)
-            if union_area == 0:
-                iou = 0
-            # iou = float(inter_area)/(union_area-inter_area)  #wrong
-            iou = float(inter_area) / union_area
-            # iou=float(inter_area) /(poly1.area+poly2.area-inter_area)
-            # The source code gives two ways to calculate IOU, the first one is: intersection part / area of the smallest polygon containing two quadrilaterals
-            # The second one: intersection/merge (common way to calculate IOU of rectangular box)
-        except shapely.geos.TopologicalError:
-            print('shapely.geos.TopologicalError occured, iou set to 0')
-            iou = 0
-    return iou
-
-
 def is_default_gpu(opts) -> bool:
     return opts.local_rank == -1 or dist.get_rank() == 0
 
@@ -150,6 +113,8 @@ class PreTrainCMTAgent:
 
             # vision model
             self.vision_model = yolov5x_backbone().cuda()
+
+
             new_state = torch.load('models/yolov5x_backbone.pth')
             filter_state_dict = {}
             for k, v in new_state.items():
@@ -179,11 +144,6 @@ class PreTrainCMTAgent:
         # Evaluations
         self.losses = []
         self.progress_regression = nn.MSELoss(reduction='sum')
-
-        # bbox regression loss;
-        self.label_loss = nn.BCEWithLogitsLoss()
-        self.bbox_f1_loss = L1Loss()
-        self.bbox_iou_loss = GIoULoss()
 
         # Logs
         sys.stdout.flush()
@@ -233,7 +193,7 @@ class PreTrainCMTAgent:
                 self.env = SimulatorAVDN(batch_data, self.args.batch_size, dataset_dir=self.args.train_dataset_dir)
                 
                 
-                self.rollout(train_ml=self.args.ml_weight, train_rl=False, nss_w=self.args.nss_w * nss_w_weighting, **kwargs)
+                self.rollout(train_ml=self.args.teacher_weight, train_rl=False, nss_w=self.args.nss_w * nss_w_weighting, **kwargs)
                 # Normal ROLLBACK FUNCTION
                 
                 # if feedback == 'teacher':
@@ -380,22 +340,63 @@ class PreTrainCMTAgent:
             else:
                 lang_inputs.append(ob['instructions'])
 
-        if 'normal' in self.args.tasks:
-            encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
-            input_ids = encoding['input_ids'].cuda()
-            attention_mask = encoding['attention_mask'].cuda()
+        # if 'normal' in self.args.tasks:                                                     # ADD TASKS HERE
+        #     encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+        #     input_ids = encoding['input_ids'].cuda()
+        #     attention_mask = encoding['attention_mask'].cuda()
+        #     lang_features, _, _ = self.lang_model(input_ids, attention_mask)
+
+        #     if not self.args.train_val_on_full:
+        #         lang_inputs = []
+        #         for i, ob in enumerate(obs):
+        #             lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
+
+        #         encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+        #         input_ids = encoding['input_ids'].cuda()
+        #         attention_mask = encoding['attention_mask'].cuda()
+        #         _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
+
+        #     # Record starting points of the current batch
+        #     current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]
+        #     current_directions = [np.array(ob['starting_angle']) for ob in obs]
+        #     direction_t = torch.from_numpy(np.array(current_directions))
+        #     traj = [defaultdict(list) for ob in obs]
+        #     for i, ob in enumerate(obs):
+        #         traj[i]['instr_id'] = ob['map_name'] + '__' + ob['route_index']
+        #         rounds = lang_inputs[i].split('[QUE]')
+        #         remove = 0
+        #         for r in rounds:
+        #             if 'Yes' in r[0:5]:
+        #                 remove += 1
+        #         traj[i]['num_dia'] = len(rounds) - remove
+        #         traj[i]['path_corners'] = [(np.array(ob['gt_path_corners'][0]), ob['starting_angle'])]
+        #         traj[i]['gt_path_corners'] = ob['gt_path_corners']
+
+        #     # Initialization the finishing status
+        #     ended = np.array([False] * batch_size)
+
+        #     # Init the logs
+        #     ml_loss = 0.
+
+        #     input = {
+        #         'directions': [],
+        #         'frames': [],
+        #         'pos': [],
+        #         'lenths': [0 for _ in range(batch_size)],
+        #         'lang': lang_features,
+        #         # 'lang_mask': instru_attention_mask,
+        #         'lang_cls': cls_hidden, }
+
+
+        if self.args.mlm:
+            # segment_views = [ (torch.from_numpy(obs[i]['segment_view'])).permute(2, 0, 1) for i in range(len(obs))]
+            # targets = torch.from_numpy(np.stack(segment_views, axis=0)).cuda()
+            print(obs[1]['token_ids'])
+            input_ids = torch.tensor(obs['masked_token']).cuda()
+            attention_mask = torch.tensor(obs['attention_mask']).cuda()
             lang_features, _, _ = self.lang_model(input_ids, attention_mask)
 
-            if not self.args.train_val_on_full:
-                lang_inputs = []
-                for i, ob in enumerate(obs):
-                    lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
-
-                encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
-                input_ids = encoding['input_ids'].cuda()
-                attention_mask = encoding['attention_mask'].cuda()
-                _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
-
+            #---------------------------------------------------------------------------------------------------------------------------------
             # Record starting points of the current batch
             current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]
             current_directions = [np.array(ob['starting_angle']) for ob in obs]
@@ -414,7 +415,7 @@ class PreTrainCMTAgent:
 
             # Initialization the finishing status
             ended = np.array([False] * batch_size)
-
+            # -----------------------------------------------------------------------------------------------------------------
             # Init the logs
             ml_loss = 0.
 
@@ -426,10 +427,55 @@ class PreTrainCMTAgent:
                 'lang': lang_features,
                 # 'lang_mask': instru_attention_mask,
                 'lang_cls': cls_hidden, }
+            
+            for t in range(self.args.max_action_len):
+                # image embeddings;
+                images = []
+                for i in range(len(obs)):
+                    images.append(obs[i]['current_view'].copy())
+                images = np.stack(images)[:, :, :, ::-1].transpose(0, 3, 1, 2)  # W x H x C to C x W x H
+                images = np.ascontiguousarray(images, dtype=np.float32)
+                images -= self.rgb_mean
+                images /= self.rgb_std
+                print(images.shape) # (4, 3, 224, 224)
+                # [4, 49, 768]
+                im_feature = self.vision_model(torch.from_numpy(images).cuda()) 
+                print("bf",im_feature.shape) # torch.Size([4, 1280, 7, 7])
+                im_feature = im_feature.flatten(-2, -1)
+                im_feature_g = self.vln_model_without_ddp.embed_frames(im_feature, input['lang_cls'], torch.LongTensor([t]).cuda())
 
+                # direction embeddings;
+                current_direct = direction_t.view(-1, 1).cuda()
+                direction = torch.concat([torch.sin(current_direct / 180 * 3.14159), torch.cos(current_direct / 180 * 3.14159)], dim=1)
+                direction_g = self.vln_model_without_ddp.embed_actions(direction, torch.LongTensor([t]).cuda())
 
-        if 'mlm' in self.args.mlm:
-            encoding = obs['masked_token'].cuda()
+                # current postion, used for the graph aware attention, like duet;
+                # [bs, 2] reletive pos from start point, at time t;
+                pos_tensor = []
+                for i in range(len(obs)):
+                    pos_tensor.append((np.mean(traj[i]['path_corners'][0][0], axis=0) - np.mean(current_view_corners[i], axis=0)) / 0.001)
+                pos_tensor = np.array(pos_tensor, dtype=np.float32)
+                # pos_tensor = torch.tensor(pos_tensor, dtype=torch.float).cuda()
+
+                # append the history
+                input['frames'].append(im_feature_g)
+                input['directions'].append(direction_g)
+                input['pos'].append(pos_tensor)
+
+                # record the length
+                for i in range(len(obs)):
+                    if not ended[i]:
+                        input['lenths'][i] += 1
+
+                # forward the model;
+                        
+                output, pred_saliency, bbox_logits = self.vln_model(
+                    directions=input['directions'],
+                    pos=input['pos'],
+                    frames=input['frames'],
+                    lenths=input['lenths'],
+                    lang=input['lang'],
+                    lang_cls=input['lang_cls'])
 
             pass
             # self.mlm_head = BertOnlyMLMHead(self.config)

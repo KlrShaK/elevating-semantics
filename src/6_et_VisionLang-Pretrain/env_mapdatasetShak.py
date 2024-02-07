@@ -271,6 +271,7 @@ class SimulatorAVDN(object):
                 'masked_token': item['masked_token'],
                 'token_ids': item['token_ids'],
                 'token_label': item['token_label'],
+                'attention_mask': item['attention_mask'],
 
             # bbox target;
                 'bbox_target_xyxy': target_xyxy,
@@ -338,17 +339,25 @@ class ANDHNavBatchMapMLM(Dataset):
 
         for split in splits:
             data = json.load(open(os.path.join(anno_dir, '%s_data.json' % split)))     
-            for item in self.data:
+            for item in data:
                 item['angle'] = round(item['angle']) % 360
                 for i in range(len(item['gt_path_corners'])):
                     item['gt_path_corners'][i] = np.array(item['gt_path_corners'][i])
 
-                item['instructions'] = item['instructions'].lower()
                 item['pre_dialogs'] = ' '.join(item['pre_dialogs']).lower()
+                item['instructions'] = item['pre_dialogs'] + item['instructions'].lower()
 
-                tokens = self.tokenizer.encode(item['instructions'])
-                masked_tokens, labels = random_word(tokens, [self.tokenizer.vocab_size], self.mask_token_id)
 
+                input_text = "This is an example sentence."
+                encoded_input = self.tok.encode_plus(input_text, add_special_tokens=True, padding='max_length', max_length=128, return_attention_mask=True)
+
+                tokens = encoded_input['input_ids']
+                attention_mask = encoded_input['attention_mask']
+
+
+                masked_tokens, labels = random_word(tokens, [self.tok.vocab_size], self.mask_token_id)
+
+                item['attention_mask'] = torch.tensor(attention_mask, dtype=torch.long)
                 item['masked_token'] = torch.tensor(masked_tokens, dtype=torch.long)
                 item['token_ids'] = torch.tensor(tokens, dtype=torch.long)
                 item['token_label'] = torch.tensor(labels, dtype=torch.long)
@@ -363,147 +372,6 @@ class ANDHNavBatchMapMLM(Dataset):
 
     def __getitem__(self, idx):
         return self.data_list[idx]
-
-
-
-    # Nav Evaluation
-    @staticmethod
-    def _eval_item(gt_path, gt_corners, path, corners, progress):
-        def path_fid(exec_path, gt_path):
-            div_sum = 0
-            for i in range(len(exec_path)):
-                poly = LineString(gt_path)
-                point = Point(exec_path[i])
-                p1, p2 = nearest_points(poly, point)
-                div_sum += np.linalg.norm(np.array(p1.coords) - exec_path[i])
-            return div_sum / len(exec_path)
-
-        scores = {}
-        scores['trajectory_lengths'] = np.sum([np.linalg.norm(a - b) for a, b in zip(path[:-1], path[1:])])
-        scores['trajectory_lengths'] = scores['trajectory_lengths'] * 11.13 * 1e4
-        gt_whole_lengths = np.sum([np.linalg.norm(a - b) for a, b in zip(gt_path[:-1], gt_path[1:])]) * 11.13 * 1e4
-        gt_net_lengths = np.linalg.norm(gt_path[0] - gt_path[-1]) * 11.13 * 1e4
-
-        scores['iou'] = progress[-1]  # same as compute_iou(corners[-1], gt_corners[-1]）
-
-        scores['gp'] = gt_net_lengths - np.linalg.norm(path[-1] - gt_path[-2]) * 11.13 * 1e4
-        scores['oracle_gp'] = gt_net_lengths - np.min([np.linalg.norm(path[x] - gt_path[-1]) for x in range(len(path))]) * 11.13 * 1e4
-
-        scores['success'] = float(progress[-1] >= 0.4)
-        _center = np.mean(gt_corners[-1], axis=0)
-        _point = Point(_center)
-        _poly = Polygon(np.array(corners[-1]))
-        if not _poly.contains(_point):
-            scores['success'] = float(0)
-
-        _center = np.mean(corners[-1], axis=0)
-        _point = Point(_center)
-        _poly = Polygon(np.array(gt_corners[-1]))
-        if not _poly.contains(_point):
-            scores['success'] = float(0)
-
-        scores['oracle_success'] = float(any(np.array(progress) > 0.4))
-        scores['gt_length'] = gt_whole_lengths
-        scores['spl'] = scores['success'] * gt_net_lengths / max(scores['trajectory_lengths'], gt_net_lengths, 0.01)
-
-        return scores
-
-    def eval_metrics(self, preds, human_att_eval=False):
-        """ Evaluate each agent trajectory based on how close it got to the goal location
-        the path contains [view_id, angle, vofv]"""
-        # print('eval %d predictions' % (len(preds)))
-
-        metrics = defaultdict(list)
-        if human_att_eval:
-            for k in preds.keys():
-                if 'human_att_performance' in preds[k].keys():
-                    metrics['human_att_performance'] += preds[k]['human_att_performance']
-                    nss = np.mean(preds[k]['nss'])
-                    if nss == nss:
-                        metrics['nss'].append(nss)
-            metrics['human_att_performance'] = np.mean(metrics['human_att_performance'], axis=0)
-            metrics['nss'] = np.mean(metrics['nss'])
-            if metrics['nss'] == metrics['nss']:
-                avg_metrics = {"HA_precision": metrics['human_att_performance'][0],
-                               "HA_recall": metrics['human_att_performance'][0],
-                               "nss": metrics['nss']}
-            else:
-                avg_metrics = {"HA_precision": 0, "HA_recall": 0, "nss": 0}
-            return avg_metrics, metrics
-
-        for k in preds.keys():
-            item = preds[k]
-            instr_id = item['instr_id']
-            # print(instr_id)
-            dia_number = 0
-            if 'num_dia' in preds[k].keys():
-                dia_number = preds[k]['num_dia']
-            traj = [np.mean(x[0], axis=0) for x in item['path_corners']]  # x = (corners, directions)
-            corners = [np.array(x[0]) for x in item['path_corners']]  # x = (corners, directions)
-            progress = [x for x in item['gt_progress']]
-            gt_corners = [np.array(x) for x in item['gt_path_corners']]
-            gt_trajs = [np.mean(x, axis=0) for x in item['gt_path_corners']]
-
-            traj_scores = self._eval_item(gt_trajs, gt_corners, traj, corners, progress)
-            for k, v in traj_scores.items():
-                if k == 'iou' and traj_scores['success']:
-                    metrics[k].append(v)
-                else:
-                    metrics[k].append(v)
-
-            if dia_number == 1:
-                metrics['success_1'].append(traj_scores['success'])
-                metrics['spl_1'].append(traj_scores['spl'])
-                metrics['gp_1'].append(traj_scores['gp'])
-            elif dia_number == 2:
-                metrics['success_2'].append(traj_scores['success'])
-                metrics['spl_2'].append(traj_scores['spl'])
-                metrics['gp_2'].append(traj_scores['gp'])
-            else:
-                metrics['success_else'].append(traj_scores['success'])
-                metrics['spl_else'].append(traj_scores['spl'])
-                metrics['gp_else'].append(traj_scores['gp'])
-
-            if traj_scores['trajectory_lengths'] > 150:
-                metrics['success_long'].append(traj_scores['success'])
-                metrics['spl_long'].append(traj_scores['spl'])
-                metrics['gp_long'].append(traj_scores['gp'])
-            else:
-                metrics['success_short'].append(traj_scores['success'])
-                metrics['spl_short'].append(traj_scores['spl'])
-                metrics['gp_short'].append(traj_scores['gp'])
-            metrics['instr_id'].append(instr_id)
-
-        avg_metrics = {
-            # 'steps': np.mean(metrics['trajectory_steps']),
-            'lengths': np.mean(metrics['trajectory_lengths']),
-            'sr': np.mean(metrics['success']) * 100,
-            'oracle_sr': np.mean(metrics['oracle_success']) * 100,
-            'spl': np.mean(metrics['spl']) * 100,
-            'gp': np.mean(metrics['gp']),
-            'oracle_gp': np.mean(metrics['oracle_gp']),
-            'gt_length': np.mean(metrics['gt_length']),
-            'iou': np.mean(metrics['iou']),
-        }
-        if len(metrics['success_1']) != 0:
-            avg_metrics['num_1'] = len(metrics['success_1'])
-            avg_metrics['spl_1'] = np.mean(metrics['spl_1']) * 100
-            avg_metrics['sr_1'] = np.mean(metrics['success_1']) * 100
-            avg_metrics['gp_1'] = np.mean(metrics['gp_1'])
-
-        if len(metrics['success_2']) != 0:
-            avg_metrics['num_2'] = len(metrics['success_2'])
-            avg_metrics['spl_2'] = np.mean(metrics['spl_2']) * 100
-            avg_metrics['sr_2'] = np.mean(metrics['success_2']) * 100
-            avg_metrics['gp_2'] = np.mean(metrics['gp_2'])
-
-        if len(metrics['success_else']) != 0:
-            avg_metrics['num_else'] = len(metrics['success_else'])
-            avg_metrics['spl_else'] = np.mean(metrics['spl_else']) * 100
-            avg_metrics['sr_else'] = np.mean(metrics['success_else']) * 100
-            avg_metrics['gp_else'] = np.mean(metrics['gp_else'])
-
-        return avg_metrics, metrics
 
 
 def simple_cat_collate(data):

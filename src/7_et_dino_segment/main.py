@@ -65,7 +65,7 @@ def train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, au
 
     agent_class = NavCMTAgent
     agent = agent_class(args, rank=rank)
-
+    
     # -------------------------------------------------------------------------------------- #
     # # resume file
     # -------------------------------------------------------------------------------------- #
@@ -151,12 +151,18 @@ def train(args, train_env, train_full_traj_env, val_envs, val_full_traj_envs, au
                     loss_str += ', %s: %.2f' % (metric, val)
                     writer.add_scalar('%s/%s' % (metric, env_name), score_summary[metric], iter)
                 if env_name in best_val:                                                                # CHANGED Added SPL+SR+GP for comparison to take the best one 
-                    if (( score_summary['spl'] + score_summary['sr'] + score_summary['gp'] ) >= (best_val[env_name]['spl'] + best_val[env_name]['sr'] + best_val[env_name]['gp'] )): 
+                    if (( score_summary['spl'] ) >= (best_val[env_name]['spl'])): 
                         best_val[env_name]['spl'] = score_summary['spl']
-                        best_val[env_name]['sr'] = score_summary['sr']
-                        best_val[env_name]['gp'] = score_summary['gp']
                         best_val[env_name]['state'] = 'Iter %d %s' % (iter, loss_str)
                         agent_eval.save(iter, os.path.join(args.ckpt_dir, "best_%s" % (env_name)))
+                
+                # if env_name in best_val:                                                                # CHANGED Added SPL+SR+GP for comparison to take the best one 
+                #     if (( score_summary['spl'] + score_summary['sr'] + score_summary['gp'] ) >= (best_val[env_name]['spl'] + best_val[env_name]['sr'] + best_val[env_name]['gp'] )): 
+                #         best_val[env_name]['spl'] = score_summary['spl']
+                #         best_val[env_name]['sr'] = score_summary['sr']
+                #         best_val[env_name]['gp'] = score_summary['gp']
+                #         best_val[env_name]['state'] = 'Iter %d %s' % (iter, loss_str)
+                #         agent_eval.save(iter, os.path.join(args.ckpt_dir, "best_%s" % (env_name)))
 
             # evaluate human attention
             for env_name, env in val_envs.items():
