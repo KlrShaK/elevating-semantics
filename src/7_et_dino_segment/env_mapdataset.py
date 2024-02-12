@@ -12,6 +12,8 @@ import shapely
 import shapely.geometry
 from shapely.geometry import Point, Polygon, LineString, MultiPoint
 from shapely.ops import nearest_points
+from itertools import product
+from copy import deepcopy
 
 
 CLASSES = ('background', 'building', 'road', 'water', 'barren', 'forest',
@@ -348,12 +350,34 @@ class ANDHNavBatchMap(Dataset):
                 for i in range(len(item['gt_path_corners'])):
                     item['gt_path_corners'][i] = np.array(item['gt_path_corners'][i])
 
-                item['instructions'] = item['instructions'].lower()
-                item['pre_dialogs'] = ' '.join(item['pre_dialogs']).lower()
+                # item['instructions'] = item['instructions'].lower()
+                # item['pre_dialogs'] = ' '.join(item['pre_dialogs']).lower()
+                # self.data_list.append(item
 
-                self.data_list.append(item)
+
+                if len(item['pre_dialogs']) == 0:
+                    intstrs_copy = item['instructions'].copy()
+                    for instr in intstrs_copy:
+                        item_copy = deepcopy(item)
+                        item_copy['instructions'] = instr
+                        item_copy['pre_dialogs'] = ' '
+                        self.data_list.append(item_copy)
+
+                else:
+                    all_combinations = list(product(*item['pre_dialogs']))
+                    concatenated_pre_dialogs = [" ".join(combo) for combo in all_combinations]
+                    intstrs_copy = item['instructions'].copy()
+
+                    for pre_dialog in concatenated_pre_dialogs:
+                        for instr in intstrs_copy:
+                            item_copy = deepcopy(item)
+                            item_copy['pre_dialogs'] = pre_dialog
+                            item_copy['instructions'] = instr
+                            
+                            self.data_list.append(item_copy)
 
             print('%s loaded with %d instructions, using splits: %s' % (self.__class__.__name__, len(data), split))
+
 
     def __len__(self):
         return len(self.data_list)
@@ -510,8 +534,10 @@ def simple_cat_collate(data):
 
 
 if __name__ == '__main__':
-    ds = ANDHNavBatchMap(anno_dir='../../datasets', dataset_dir=None, splits=['val_unseen'])
-    dl = DataLoader(ds, batch_size=1, drop_last=False, collate_fn=simple_cat_collate)
+    ds = ANDHNavBatchMap(anno_dir='../../datasets/AVDN/annotations', dataset_dir=None, splits=['train_test'])
+    # dl = DataLoader(ds, batch_size=1, drop_last=False, collate_fn=simple_cat_collate)
 
-    # print(ds.__getitem__(0))
-    print(next(iter(dl)))
+    for i in range(ds.__len__()):
+        print(ds.__getitem__(i))
+    print(ds.__len__())
+    # print(next(iter(dl)))
