@@ -228,6 +228,7 @@ def valid(args, val_envs, val_full_traj_envs, rank=-1):
 
 def main():
     args = parse_args()
+    rank = init_distributed_mode(args)
 
     if args.world_size > 1:
         rank = init_distributed_mode(args)

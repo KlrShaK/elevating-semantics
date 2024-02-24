@@ -151,12 +151,27 @@ class CustomRoBERTModel(nn.Module):
         super(CustomRoBERTModel, self).__init__()
         self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
         self.bert = AutoModel.from_pretrained("roberta-base")
-        # freeze_network(self.bert)
+        # freeze_network(self.bert)-------------------------------------------------------
+        # ct = 1
         # for child in self.bert.children():
-        #     # ct += 1
-        #     # if ct < 7:
+        #     ct += 1
+        #     if ct < 7:
         #         for param in child.parameters():
         #             param.requires_grad = False
+        # print('RoBERTa model is loaded ...: count', ct)
+        # ----------------------------------------Freeze all layers first----------------------------------------------------------------------------
+        # count = 0
+        # for param in self.bert.parameters():
+        #     param.requires_grad = False
+        # # for layer in self.bert.encoder.layer[:]:
+        # #     count += 1
+        # # print("layers total count: BERT ", count)
+        # # Unfreeze the top layers, for example, the last N layers
+        # # You need to adjust 'N' and the layer names based on your model's architecture
+        # N = 6  # Example: Unfreeze the last 2 layers
+        # for param in list(self.bert.encoder.layer[-N:].parameters()):
+        #     param.requires_grad = True
+        # ----------------------------------------Freeze all layers first----------------------------------------------------------------------------
 
     def forward(self, ids, mask):
         bert_output = self.bert(ids, attention_mask=mask)

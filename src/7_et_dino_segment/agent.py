@@ -2,6 +2,7 @@ import os
 import sys
 import math
 from collections import defaultdict
+import random
 
 import cv2
 import numpy as np
@@ -197,6 +198,20 @@ class NavCMTAgent:
             # vision model
             # self.vision_model = yolov5x_backbone().cuda()
             self.vision_model = AutoModel.from_pretrained('facebook/dinov2-base', ).cuda()
+            # ----------------------------------------Freeze all layers first----------------------------------------------------------------------------
+            # count = 0
+            # for param in self.vision_model.parameters():
+            #     param.requires_grad = False
+            # # for layer in self.vision_model.encoder.layer[:]:
+            # #     count += 1
+            # # print("layers total count: dINOV2 ", count)
+            # # Unfreeze the top layers, for example, the last N layers
+            # # You need to adjust 'N' and the layer names based on your model's architecture
+            # N = 4  # Example: Unfreeze the last 2 layers
+            # for param in list(self.vision_model.encoder.layer[-N:].parameters()):
+            #     param.requires_grad = True
+            # ----------------------------------------Freeze all layers first----------------------------------------------------------------------------
+            
             self.vision_model = DDP(self.vision_model, broadcast_buffers=False, find_unused_parameters=True, device_ids=[self.args.local_rank], output_device=self.args.local_rank)
 
             # et model
@@ -534,28 +549,83 @@ class NavCMTAgent:
         # -------------------------------------------------------------------------------------- #
         # # Language input
         # -------------------------------------------------------------------------------------- #
-        lang_inputs = []
-        for i, ob in enumerate(obs):
-            if self.args.vision_only:
-                lang_inputs.append('')
-            else:
-                lang_inputs.append(ob['instructions'])
-
-        encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
-        input_ids = encoding['input_ids'].cuda()
-        attention_mask = encoding['attention_mask'].cuda()
-        lang_features, _, _ = self.lang_model(input_ids, attention_mask)
-
-        if not self.args.train_val_on_full:
+        if not_in_train:
+            # validation or test;
             lang_inputs = []
             for i, ob in enumerate(obs):
-                lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
+                if self.args.vision_only:
+                    lang_inputs.append('')
+                else:
+                    lang_inputs.append(ob['instructions'])
 
             encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
             input_ids = encoding['input_ids'].cuda()
             attention_mask = encoding['attention_mask'].cuda()
-            _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
+            lang_features, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
 
+            if not self.args.train_val_on_full:
+                lang_inputs = []
+                for i, ob in enumerate(obs):
+                    lang_inputs.append(' '.join(ob['pre_dialogs']) + ob['instructions'])
+
+                encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+                input_ids = encoding['input_ids'].cuda()
+                attention_mask = encoding['attention_mask'].cuda()
+                _, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+        else:
+            # training, language augmentation;
+            lang_inputs = []
+            for i, ob in enumerate(obs):
+                assert isinstance(ob['instructions'], list)
+                lang_inputs.append(random.choice(ob['instructions']))
+
+            # print('\n', 'instructions', lang_inputs, )
+            encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+            input_ids = encoding['input_ids'].cuda()
+            attention_mask = encoding['attention_mask'].cuda()
+            lang_features, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+
+            lang_inputs = []
+            for i, ob in enumerate(obs):
+                instru = ''
+                if ob['pre_dialogs']:
+                    for ii in range(len(ob['pre_dialogs'])):
+                        assert isinstance(ob['pre_dialogs'][ii], list)
+                        instru += random.choice(ob['pre_dialogs'][ii])
+                        instru += ' '
+                assert isinstance(ob['instructions'], list)
+                instru += random.choice(ob['instructions'])
+                lang_inputs.append(instru)
+
+            # print('\n', 'pre_dialogs', lang_inputs, )
+            encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+            input_ids = encoding['input_ids'].cuda()
+            attention_mask = encoding['attention_mask'].cuda()
+            _, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+        # -------------------------------ORIGINAL-----------------
+        # lang_inputs = []
+        # for i, ob in enumerate(obs):
+        #     if self.args.vision_only:
+        #         lang_inputs.append('')
+        #     else:
+        #         lang_inputs.append(ob['instructions'])
+
+        # encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+        # input_ids = encoding['input_ids'].cuda()
+        # attention_mask = encoding['attention_mask'].cuda()
+        # lang_features, _, _ = self.lang_model(input_ids, attention_mask)
+
+        # if not self.args.train_val_on_full:
+        #     lang_inputs = []
+        #     for i, ob in enumerate(obs):
+        #         lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
+
+        #     encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+        #     input_ids = encoding['input_ids'].cuda()
+        #     attention_mask = encoding['attention_mask'].cuda()
+        #     _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
+        # ------------------------------------------------------------------------------
+            
         # Record starting points of the current batch
         current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]
         current_directions = [np.array(ob['starting_angle']) for ob in obs]
