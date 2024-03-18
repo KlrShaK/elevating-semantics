@@ -8,6 +8,7 @@ import numpy as np
 import shapely
 import shapely.geometry
 from shapely.geometry import Polygon, MultiPoint
+import random
 
 import torch
 import torch.nn as nn
@@ -482,27 +483,59 @@ class NavCMTAgent:
         # -------------------------------------------------------------------------------------- #
         # # Language input
         # -------------------------------------------------------------------------------------- #
-        lang_inputs = []
-        for i, ob in enumerate(obs):
-            if self.args.vision_only:
-                lang_inputs.append('')
-            else:
-                lang_inputs.append(ob['instructions'])
-
-        encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
-        input_ids = encoding['input_ids'].cuda()
-        attention_mask = encoding['attention_mask'].cuda()
-        lang_features, _, _ = self.lang_model(input_ids, attention_mask)
-
-        if not self.args.train_val_on_full:
+        if not_in_train:
+            # validation or test;
             lang_inputs = []
             for i, ob in enumerate(obs):
-                lang_inputs.append(ob['pre_dialogs'] + ob['instructions'])
+                if self.args.vision_only:
+                    lang_inputs.append('')
+                else:
+                    lang_inputs.append(ob['instructions'])
 
             encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
             input_ids = encoding['input_ids'].cuda()
             attention_mask = encoding['attention_mask'].cuda()
-            _, _, cls_hidden = self.lang_model(input_ids, attention_mask)
+            lang_features, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+
+            if not self.args.train_val_on_full:
+                lang_inputs = []
+                for i, ob in enumerate(obs):
+                    lang_inputs.append(' '.join(ob['pre_dialogs']) + ob['instructions'])
+
+                encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+                input_ids = encoding['input_ids'].cuda()
+                attention_mask = encoding['attention_mask'].cuda()
+                _, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+        else:
+            # training, language augmentation;
+            lang_inputs = []
+            for i, ob in enumerate(obs):
+                assert isinstance(ob['instructions'], list)
+                lang_inputs.append(random.choice(ob['instructions']))
+
+            # print('\n', 'instructions', lang_inputs, )
+            encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+            input_ids = encoding['input_ids'].cuda()
+            attention_mask = encoding['attention_mask'].cuda()
+            lang_features, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
+
+            lang_inputs = []
+            for i, ob in enumerate(obs):
+                instru = ''
+                if ob['pre_dialogs']:
+                    for ii in range(len(ob['pre_dialogs'])):
+                        assert isinstance(ob['pre_dialogs'][ii], list)
+                        instru += random.choice(ob['pre_dialogs'][ii])
+                        instru += ' '
+                assert isinstance(ob['instructions'], list)
+                instru += random.choice(ob['instructions'])
+                lang_inputs.append(instru)
+
+            # print('\n', 'pre_dialogs', lang_inputs, )
+            encoding = self.lang_model_without_ddp.tokenizer(lang_inputs, padding=True, return_tensors="pt")
+            input_ids = encoding['input_ids'].cuda()
+            attention_mask = encoding['attention_mask'].cuda()
+            _, linear_cls, cls_hidden = self.lang_model(input_ids, attention_mask)
 
         # Record starting points of the current batch
         current_view_corners = [np.array(ob['gt_path_corners'][0]) for ob in obs]

@@ -285,8 +285,8 @@ class ANDHNavBatchMap(Dataset):
                 for i in range(len(item['gt_path_corners'])):
                     item['gt_path_corners'][i] = np.array(item['gt_path_corners'][i])
 
-                item['instructions'] = item['instructions'].lower()
-                item['pre_dialogs'] = ' '.join(item['pre_dialogs']).lower()
+                # item['instructions'] = item['instructions'].lower()
+                # item['pre_dialogs'] = ' '.join(item['pre_dialogs']).lower()
 
                 self.data_list.append(item)
 
