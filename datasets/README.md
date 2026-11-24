@@ -1,5 +1,5 @@
 # Explore AVDN dataset
-After following the data downloading insructions, by default, four splits of the AVDN dataset should be under the path `datasets/AVDN/annotations` and the xView images should be under the path `datasets/AVDN/train_images`.
+Place the AVDN annotations in `datasets/AVDN/annotations/` and the xView images in `datasets/AVDN/train_images/`. Download links and pretrained weight locations are listed in the [project README](../README.md#run-the-image-augmentation-baseline).
 ```
 datasets
 ├── AVDN
@@ -42,11 +42,10 @@ For each sub-trajectories, we provide the following data.
 * "angle": the direction (degree) of the inital view area. North is 0 degree and East is 90 degree. 
 
 ## Visualization
-<img align="right" height="226" src="../readme_imgs/explore_avdn.png" />
-We provide a script for visualizing the trajectories and corresponding dialgues (as shown on the right). The script uses OpenCV. To run the script, plase download the xView data and AVDN dataset and provide to the script with the paths to the folder containing xView images and to AVDN dataset (either train, val_seen or val_unseen).
+The visualizer opens an OpenCV window for exploring trajectories and dialog. Run it from the repository root after setting up the dataset.
 
-```
-python visualize_sub_traj_new.py \
---xview_image_path {PATH_TO_XVIEW_IMG_FOLDER} \
---avdn_annotation_path {PATH_TO_AVDN_DATASET}/val_seen_data.json
+```bash
+python datasets/visualize_sub_traj.py \
+  --xview_image_path datasets/AVDN/train_images/ \
+  --avdn_annotation_path datasets/AVDN/annotations/val_seen_data.json
 ```
